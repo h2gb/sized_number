@@ -1,0 +1,32 @@
+[package]
+name = "sized_number"
+version = "0.0.0"
+authors = ["iagox86 <ron-git@skullsecurity.org>"]
+edition = "2018"
+description = "A class for reading and displaying numbers of different sizes"
+license = "MIT"
+documentation = "https://github.com/h2gb/sized_number"
+homepage = "https://github.com/h2gb/sized_number"
+repository = "https://github.com/h2gb/sized_number"
+readme = "README.md"
+
+[features]
+serialize = ["serde", "ron"]
+
+[dependencies]
+# Serialize / deserialize are disabled by default
+serde = { version = "~1.0.110", optional = true }
+ron   = { version = "~0.5.1",   optional = true }
+
+# Easier error handling
+simple-error = "~0.2.1"
+
+# Read / write integers
+byteorder = "~1.3.4"
+
+[dev-dependencies]
+pretty_assertions = "~0.6.1"
+
+# This lets us use special features in our documentation
+[package.metadata."docs.rs"]
+all-features = true
