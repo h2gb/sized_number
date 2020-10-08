@@ -8,6 +8,7 @@ use serde::{Serialize, Deserialize};
 pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
 
 mod integer;
+mod float;
 
 // pub mod number_size;
 // pub use number_size::NumberSize;
