@@ -7,9 +7,10 @@ use std::fmt::*;
 use crate::Context;
 use crate::display_options::{ScientificOptions, HexOptions, BinaryOptions};
 
+#[derive(Debug, Clone, Copy)]
 pub struct SizedInteger<T>
 where
-    T: UpperHex + LowerHex + Octal + Binary + LowerExp + UpperExp + Display
+    T: UpperHex + LowerHex + Octal + Binary + LowerExp + UpperExp + Display + Copy
 {
     value: T,
 }
@@ -116,7 +117,7 @@ impl SizedInteger<i128> {
 
 impl<T> SizedInteger<T>
 where
-    T: UpperHex + LowerHex + Octal + Binary + LowerExp + UpperExp + Display
+    T: UpperHex + LowerHex + Octal + Binary + LowerExp + UpperExp + Display + Copy
 {
     pub fn size() -> usize {
         mem::size_of::<T>()

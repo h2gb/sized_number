@@ -7,9 +7,10 @@ use crate::display_options::ScientificOptions;
 
 pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
 
+#[derive(Debug, Clone, Copy)]
 pub struct SizedFloat<T>
 where
-    T: LowerExp + UpperExp + Display
+    T: LowerExp + UpperExp + Display + Copy
 {
     value: T,
 }
@@ -41,7 +42,7 @@ impl SizedFloat<f64> {
 
 impl<T> SizedFloat<T>
 where
-    T: LowerExp + UpperExp + Display
+    T: LowerExp + UpperExp + Display + Copy
 {
     pub fn to_string(&self, display: FloatDisplay) -> String {
         match display {
