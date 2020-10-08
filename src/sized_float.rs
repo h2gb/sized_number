@@ -3,26 +3,15 @@ use byteorder::{ReadBytesExt, ByteOrder};
 use simple_error::{SimpleResult, bail};
 use std::fmt::*;
 
-pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
+use crate::display_options::ScientificOptions;
 
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub enum Endian {
-    BigEndian,
-    LittleEndian,
-}
+pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
 
 pub struct SizedFloat<T>
 where
     T: LowerExp + UpperExp + Display
 {
     value: T,
-}
-
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub struct ScientificOptions {
-    uppercase: bool,
 }
 
 #[derive(Debug, Clone, Copy)]

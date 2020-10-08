@@ -5,39 +5,13 @@ use std::mem;
 use std::fmt::*;
 
 use crate::Context;
-
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub enum Endian {
-    BigEndian,
-    LittleEndian,
-}
+use crate::display_options::{ScientificOptions, HexOptions, BinaryOptions};
 
 pub struct SizedInteger<T>
 where
     T: UpperHex + LowerHex + Octal + Binary + LowerExp + UpperExp + Display
 {
     value: T,
-}
-
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub struct HexOptions {
-    uppercase: bool,
-    prefix: bool,
-    padded: bool,
-}
-
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub struct ScientificOptions {
-    uppercase: bool,
-}
-
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub struct BinaryOptions {
-    padded: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -144,13 +118,17 @@ impl<T> SizedInteger<T>
 where
     T: UpperHex + LowerHex + Octal + Binary + LowerExp + UpperExp + Display
 {
+    pub fn size() -> usize {
+        mem::size_of::<T>()
+    }
+
     pub fn to_string(&self, display: IntegerDisplay) -> String {
         match display {
             IntegerDisplay::Binary(options) => {
                 match options.padded {
                     false => format!("{:b}", self.value),
                     true => {
-                        match mem::size_of::<T>() * 8 {
+                        match Self::size() * 8 {
                             8   => format!("{:08b}", self.value),
                             16  => format!("{:016b}", self.value),
                             32  => format!("{:032b}", self.value),
@@ -178,7 +156,7 @@ where
 
                     // Padding requires a bit more tinkering to do dynamically
                     true => {
-                        match (mem::size_of::<T>() * 2, options.uppercase, options.prefix) {
+                        match (Self::size() * 2, options.uppercase, options.prefix) {
                             (2, false, false)  => format!(  "{:02x}", self.value),
                             (2, false, true)   => format!("0x{:02x}", self.value),
                             (2, true, false)   => format!("{:02X}", self.value),
