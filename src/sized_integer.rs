@@ -1,13 +1,16 @@
-use serde::{Serialize, Deserialize};
 use byteorder::{ReadBytesExt, ByteOrder};
 use simple_error::{SimpleResult, bail};
 use std::mem;
-use std::fmt::*;
+use std::fmt::*; // TODO
+
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Deserialize};
 
 use crate::Context;
 use crate::display_options::{ScientificOptions, HexOptions, BinaryOptions};
 
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct SizedInteger<T>
 where
     T: UpperHex + LowerHex + Octal + Binary + LowerExp + UpperExp + Display + Copy
@@ -17,7 +20,7 @@ where
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub enum IntegerDisplay {
+pub enum SizedIntegerDisplay {
     Hex(HexOptions),
     Decimal,
     Octal,
@@ -123,9 +126,9 @@ where
         mem::size_of::<T>()
     }
 
-    pub fn to_string(&self, display: IntegerDisplay) -> String {
+    pub fn to_string(&self, display: SizedIntegerDisplay) -> String {
         match display {
-            IntegerDisplay::Binary(options) => {
+            SizedIntegerDisplay::Binary(options) => {
                 match options.padded {
                     false => format!("{:b}", self.value),
                     true => {
@@ -140,10 +143,10 @@ where
                     }
                 }
             },
-            IntegerDisplay::Decimal => {
+            SizedIntegerDisplay::Decimal => {
                 format!("{}", self.value)
             },
-            IntegerDisplay::Hex(options) => {
+            SizedIntegerDisplay::Hex(options) => {
                 match options.padded {
                     // No padding is easy
                     false => {
@@ -192,10 +195,10 @@ where
                     }
                 }
             },
-            IntegerDisplay::Octal => {
+            SizedIntegerDisplay::Octal => {
                 format!("{:o}", self.value)
             },
-            IntegerDisplay::Scientific(options) => {
+            SizedIntegerDisplay::Scientific(options) => {
                 match options.uppercase {
                     false => format!("{:e}", self.value),
                     true =>  format!("{:E}", self.value),
@@ -257,7 +260,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Hex(HexOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Hex(HexOptions {
                 uppercase: uppercase,
                 prefix: prefix,
                 padded: padded,
@@ -296,7 +299,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Hex(HexOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Hex(HexOptions {
                 uppercase: uppercase,
                 prefix: prefix,
                 padded: padded,
@@ -342,7 +345,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Hex(HexOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Hex(HexOptions {
                 uppercase: uppercase,
                 prefix: prefix,
                 padded: padded,
@@ -374,7 +377,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Hex(HexOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Hex(HexOptions {
                 uppercase: uppercase,
                 prefix: prefix,
                 padded: padded,
@@ -406,7 +409,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Hex(HexOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Hex(HexOptions {
                 uppercase: uppercase,
                 prefix: prefix,
                 padded: padded,
@@ -445,7 +448,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Hex(HexOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Hex(HexOptions {
                 uppercase: uppercase,
                 prefix: prefix,
                 padded: padded,
@@ -476,7 +479,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Decimal));
         }
 
         Ok(())
@@ -503,7 +506,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Decimal));
         }
 
         Ok(())
@@ -530,7 +533,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Decimal));
         }
 
         Ok(())
@@ -557,7 +560,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Decimal));
         }
 
         Ok(())
@@ -584,7 +587,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Decimal));
         }
 
         Ok(())
@@ -611,7 +614,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Decimal));
         }
 
         Ok(())
@@ -636,7 +639,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Decimal));
         }
 
         Ok(())
@@ -661,7 +664,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Decimal));
         }
 
         Ok(())
@@ -688,7 +691,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Octal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Octal));
         }
 
         Ok(())
@@ -714,7 +717,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Octal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Octal));
         }
 
         Ok(())
@@ -740,7 +743,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Octal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Octal));
         }
 
         Ok(())
@@ -764,7 +767,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Octal));
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Octal));
         }
 
         Ok(())
@@ -797,7 +800,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<i8> = SizedInteger::<i8>::read(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Binary(BinaryOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Binary(BinaryOptions {
                 padded: padded
             })));
         }
@@ -830,7 +833,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Scientific( ScientificOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Scientific( ScientificOptions {
                 uppercase: uppercase,
             })));
         }
@@ -863,7 +866,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedInteger<TestType> = SizedInteger::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(IntegerDisplay::Scientific( ScientificOptions {
+            assert_eq!(expected, t.to_string(SizedIntegerDisplay::Scientific( ScientificOptions {
                 uppercase: uppercase,
             })));
         }

@@ -1,13 +1,16 @@
-use serde::{Serialize, Deserialize};
 use byteorder::{ReadBytesExt, ByteOrder};
 use simple_error::{SimpleResult, bail};
 use std::fmt::*;
+
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Deserialize};
 
 use crate::display_options::ScientificOptions;
 
 pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
 
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct SizedFloat<T>
 where
     T: LowerExp + UpperExp + Display + Copy
@@ -17,7 +20,7 @@ where
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub enum FloatDisplay {
+pub enum SizedFloatDisplay {
     Decimal,
     Scientific(ScientificOptions),
 }
@@ -44,12 +47,12 @@ impl<T> SizedFloat<T>
 where
     T: LowerExp + UpperExp + Display + Copy
 {
-    pub fn to_string(&self, display: FloatDisplay) -> String {
+    pub fn to_string(&self, display: SizedFloatDisplay) -> String {
         match display {
-            FloatDisplay::Decimal => {
+            SizedFloatDisplay::Decimal => {
                 format!("{}", self.value)
             },
-            FloatDisplay::Scientific(options) => {
+            SizedFloatDisplay::Scientific(options) => {
                 match options.uppercase {
                     false => format!("{:e}", self.value),
                     true =>  format!("{:E}", self.value),
@@ -88,7 +91,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedFloat<TestType> = SizedFloat::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(FloatDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedFloatDisplay::Decimal));
         }
 
         Ok(())
@@ -114,7 +117,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedFloat<TestType> = SizedFloat::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(FloatDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedFloatDisplay::Decimal));
         }
 
         Ok(())
@@ -140,7 +143,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedFloat<TestType> = SizedFloat::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(FloatDisplay::Decimal));
+            assert_eq!(expected, t.to_string(SizedFloatDisplay::Decimal));
         }
 
         Ok(())
@@ -168,7 +171,7 @@ mod tests {
             context.set_position(index);
 
             let t: SizedFloat<TestType> = SizedFloat::<TestType>::read::<TestEndian>(&context)?;
-            assert_eq!(expected, t.to_string(FloatDisplay::Scientific(ScientificOptions {
+            assert_eq!(expected, t.to_string(SizedFloatDisplay::Scientific(ScientificOptions {
                 uppercase: uppercase,
             })));
         }

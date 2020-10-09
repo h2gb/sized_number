@@ -1,4 +1,4 @@
-// TODO: Only import if feature is enabled
+#[cfg(feature = "serialize")]
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Copy)]
