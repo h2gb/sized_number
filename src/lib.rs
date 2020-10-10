@@ -12,7 +12,7 @@
 //! # Example
 //!
 //! TODO
-#![allow(dead_code)] // TODO: Disable this
+// #![allow(dead_code)] // TODO: Disable this
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use simple_error::{SimpleResult, bail};
@@ -59,13 +59,6 @@ pub enum SizedIntegerDisplay {
     Decimal,
     Octal,
     Binary(BinaryOptions),
-    Scientific(ScientificOptions),
-}
-
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub enum SizedFloatDisplay {
-    Decimal,
     Scientific(ScientificOptions),
 }
 
@@ -549,7 +542,6 @@ impl SizedNumber {
 mod tests {
     use super::*;
 
-    use byteorder::{BigEndian, LittleEndian};
     use pretty_assertions::assert_eq;
     use simple_error::SimpleResult;
 
@@ -706,9 +698,6 @@ mod tests {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
         let context = Context::new(&data);
 
-        type TestType = u64;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  uppercase   prefix   padded    expected
             (   0,    false,      false,   false,    "1234ffffffff"),
@@ -744,9 +733,6 @@ mod tests {
         let data = b"\x00\x12\x34\xFF\xFF\xFF\xFF\x00".to_vec();
         let context = Context::new(&data);
 
-        type TestType = u64;
-        type TestEndian = LittleEndian;
-
         let tests = vec![
             // index  uppercase   prefix   padded    expected
             (   0,    false,      false,   false,    "ffffffff341200"),
@@ -781,9 +767,6 @@ mod tests {
     fn test_hex_u128_big_endian() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff".to_vec();
         let context = Context::new(&data);
-
-        type TestType = u128;
-        type TestEndian = BigEndian;
 
         let tests = vec![
             // index  uppercase   prefix   padded    expected
@@ -827,9 +810,6 @@ mod tests {
         let data = b"\x00\x7F\x80\xFF".to_vec();
         let context = Context::new(&data);
 
-        type TestType = u8;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (   0,    "0"),
@@ -859,9 +839,6 @@ mod tests {
     fn test_decimal_i8() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF".to_vec();
         let context = Context::new(&data);
-
-        type TestType = i8;
-        type TestEndian = BigEndian;
 
         let tests = vec![
             // index  expected
@@ -893,9 +870,6 @@ mod tests {
         let data = b"\x00\xFF\x00\x01\x00\x00\xFF\xFF".to_vec();
         let context = Context::new(&data);
 
-        type TestType = u16;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (   0,    "255"),
@@ -925,9 +899,6 @@ mod tests {
     fn test_decimal_u32() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\xff\xff\xff\xff\x7f\xff\xff\xff\x80\x00\x00\x00".to_vec();
         let context = Context::new(&data);
-
-        type TestType = u32;
-        type TestEndian = BigEndian;
 
         let tests = vec![
             // index  expected
@@ -959,9 +930,6 @@ mod tests {
         let data = b"\x00\x00\x00\x00\xff\xff\xff\xff\x7f\xff\xff\xff\x80\x00\x00\x00".to_vec();
         let context = Context::new(&data);
 
-        type TestType = i32;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (   0,    "0"),
@@ -991,9 +959,6 @@ mod tests {
     fn test_decimal_i64() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x7f\xff\xff\xff\xff\xff\xff\xff\x80\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff".to_vec();
         let context = Context::new(&data);
-
-        type TestType = i64;
-        type TestEndian = BigEndian;
 
         let tests = vec![
             // index  expected
@@ -1025,9 +990,6 @@ mod tests {
         let data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF".to_vec();
         let context = Context::new(&data);
 
-        type TestType = u128;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (  0,    "0"),
@@ -1056,9 +1018,6 @@ mod tests {
         let data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF".to_vec();
         let context = Context::new(&data);
 
-        type TestType = i128;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (  0,    "0"),
@@ -1086,9 +1045,6 @@ mod tests {
     fn test_octal_u8() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF".to_vec();
         let context = Context::new(&data);
-
-        type TestType = u8;
-        type TestEndian = BigEndian;
 
         let tests = vec![
             // index  expected
@@ -1120,9 +1076,6 @@ mod tests {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
         let context = Context::new(&data);
 
-        type TestType = u16;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (   0,    "0"),
@@ -1152,9 +1105,6 @@ mod tests {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
         let context = Context::new(&data);
 
-        type TestType = u32;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (   0,    "11064"),
@@ -1183,9 +1133,6 @@ mod tests {
     fn test_octal_u64() -> SimpleResult<()> {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
         let context = Context::new(&data);
-
-        type TestType = u64;
-        type TestEndian = BigEndian;
 
         let tests = vec![
             // index  expected
@@ -1255,9 +1202,6 @@ mod tests {
         let data = b"\x00\x00\x00\x00\x7f\xff\xff\xff\x80\x00\x00\x00\xff\xff\xff\xff".to_vec();
         let context = Context::new(&data);
 
-        type TestType = u32;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  uppercase  expected
             (   0,    false,     "0e0"),
@@ -1293,9 +1237,6 @@ mod tests {
     fn test_scientific_i32() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x7f\xff\xff\xff\x80\x00\x00\x00\xff\xff\xff\xff".to_vec();
         let context = Context::new(&data);
-
-        type TestType = i32;
-        type TestEndian = BigEndian;
 
         let tests = vec![
             // index  uppercase  expected
@@ -1333,9 +1274,6 @@ mod tests {
         let data = b"\x00\x00\x00\x00\xff\xff\xff\xff\x41\xc8\x00\x00\x40\x48\xf5\xc3".to_vec();
         let context = Context::new(&data);
 
-        type TestType = f32;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (   0,    "0"),
@@ -1367,9 +1305,6 @@ mod tests {
         let data = b"\x40\x09\x1e\xb8\x51\xeb\x85\x1f\x40\x09\x33\x33\x33\x33\x33\x33".to_vec();
         let context = Context::new(&data);
 
-        type TestType = f64;
-        type TestEndian = BigEndian;
-
         let tests = vec![
             // index  expected
             (   0,    "3.14"),
@@ -1399,9 +1334,6 @@ mod tests {
         let data = b"\x1F\x85\xEB\x51\xB8\x1E\x09\x40\x33\x33\x33\x33\x33\x33\x09\x40".to_vec();
         let context = Context::new(&data);
 
-        type TestType = f64;
-        type TestEndian = LittleEndian;
-
         let tests = vec![
             // index  expected
             (   0,    "3.14"),
@@ -1430,9 +1362,6 @@ mod tests {
         // I wrote and disassembled a simple C program to get these strings.. double is hard
         let data = b"\x40\x09\x1e\xb8\x51\xeb\x85\x1f\x40\x09\x33\x33\x33\x33\x33\x33".to_vec();
         let context = Context::new(&data);
-
-        type TestType = f64;
-        type TestEndian = BigEndian;
 
         let tests = vec![
             // index  uppercase expected
