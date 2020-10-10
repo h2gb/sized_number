@@ -12,7 +12,6 @@
 //! # Example
 //!
 //! TODO
-// #![allow(dead_code)] // TODO: Disable this
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use simple_error::{SimpleResult, bail};
@@ -29,6 +28,14 @@ pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct ScientificOptions {
     pub uppercase: bool,
+}
+
+impl Default for ScientificOptions {
+    fn default() -> Self {
+        Self {
+            uppercase: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -55,6 +62,14 @@ pub struct BinaryOptions {
     pub padded: bool,
 }
 
+impl Default for BinaryOptions {
+    fn default() -> Self {
+        Self {
+            padded: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub enum Endian {
@@ -75,20 +90,20 @@ pub enum SizedNumberDisplay {
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub enum SizedNumberDefinition {
-    EightBitUnsigned,
-    SixteenBitUnsigned(Endian),
-    ThirtyTwoBitUnsigned(Endian),
-    SixtyFourBitUnsigned(Endian),
-    OneTwentyEightBitUnsigned(Endian),
+    U8,
+    U16(Endian),
+    U32(Endian),
+    U64(Endian),
+    U128(Endian),
 
-    EightBitSigned,
-    SixteenBitSigned(Endian),
-    ThirtyTwoBitSigned(Endian),
-    SixtyFourBitSigned(Endian),
-    OneTwentyEightBitSigned(Endian),
+    I8,
+    I16(Endian),
+    I32(Endian),
+    I64(Endian),
+    I128(Endian),
 
-    ThirtyTwoBitFloat(Endian),
-    SixtyFourBitFloat(Endian),
+    F32(Endian),
+    F64(Endian),
 }
 
 fn display_hex(v: Box<dyn LowerHex>, options: HexOptions) -> String {
@@ -168,26 +183,26 @@ fn display_scientific(v: Box<dyn LowerExp>, options: ScientificOptions) -> Strin
 impl SizedNumberDefinition {
     pub fn size(self) -> u64 {
         match self {
-            Self::EightBitUnsigned             => 1,
-            Self::SixteenBitUnsigned(_)        => 2,
-            Self::ThirtyTwoBitUnsigned(_)      => 4,
-            Self::SixtyFourBitUnsigned(_)      => 8,
-            Self::OneTwentyEightBitUnsigned(_) => 16,
+            Self::U8      => 1,
+            Self::U16(_)  => 2,
+            Self::U32(_)  => 4,
+            Self::U64(_)  => 8,
+            Self::U128(_) => 16,
 
-            Self::EightBitSigned               => 1,
-            Self::SixteenBitSigned(_)          => 2,
-            Self::ThirtyTwoBitSigned(_)        => 4,
-            Self::SixtyFourBitSigned(_)        => 8,
-            Self::OneTwentyEightBitSigned(_)   => 16,
+            Self::I8      => 1,
+            Self::I16(_)  => 2,
+            Self::I32(_)  => 4,
+            Self::I64(_)  => 8,
+            Self::I128(_) => 16,
 
-            Self::ThirtyTwoBitFloat(_)         => 4,
-            Self::SixtyFourBitFloat(_)         => 8,
+            Self::F32(_)  => 4,
+            Self::F64(_)  => 8,
         }
     }
 
     fn to_string_internal(self, context: &Context, display: SizedNumberDisplay) -> io::Result<String> {
         match self {
-            Self::EightBitUnsigned => {
+            Self::U8 => {
                 let v = Box::new(context.clone().read_u8()?);
                 match display {
                     SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
@@ -198,7 +213,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::SixteenBitUnsigned(endian) => {
+            Self::U16(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_u16::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_u16::<LittleEndian>()?),
@@ -213,7 +228,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::ThirtyTwoBitUnsigned(endian) => {
+            Self::U32(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_u32::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_u32::<LittleEndian>()?),
@@ -228,7 +243,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::SixtyFourBitUnsigned(endian) => {
+            Self::U64(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_u64::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_u64::<LittleEndian>()?),
@@ -243,7 +258,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::OneTwentyEightBitUnsigned(endian) => {
+            Self::U128(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_u128::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_u128::<LittleEndian>()?),
@@ -258,7 +273,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::EightBitSigned => {
+            Self::I8 => {
                 let v = Box::new(context.clone().read_i8()?);
 
                 match display {
@@ -270,7 +285,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::SixteenBitSigned(endian) => {
+            Self::I16(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_i16::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_i16::<LittleEndian>()?),
@@ -285,7 +300,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::ThirtyTwoBitSigned(endian) => {
+            Self::I32(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_i32::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_i32::<LittleEndian>()?),
@@ -300,7 +315,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::SixtyFourBitSigned(endian) => {
+            Self::I64(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_i64::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_i64::<LittleEndian>()?),
@@ -315,7 +330,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::OneTwentyEightBitSigned(endian) => {
+            Self::I128(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_i128::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_i128::<LittleEndian>()?),
@@ -330,7 +345,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::ThirtyTwoBitFloat(endian) => {
+            Self::F32(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_f32::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_f32::<LittleEndian>()?),
@@ -345,7 +360,7 @@ impl SizedNumberDefinition {
                 }
             },
 
-            Self::SixtyFourBitFloat(endian) => {
+            Self::F64(endian) => {
                 let v = match endian {
                     Endian::BigEndian => Box::new(context.clone().read_f64::<BigEndian>()?),
                     Endian::LittleEndian => Box::new(context.clone().read_f64::<LittleEndian>()?),
@@ -371,76 +386,76 @@ impl SizedNumberDefinition {
 
     pub fn to_u64(self, context: &Context) -> SimpleResult<u64> {
         match self {
-            Self::EightBitUnsigned => {
+            Self::U8 => {
                 match context.clone().read_u8() {
-                    Ok(v) => Ok(v as u64),
+                    Ok(v)  => Ok(v as u64),
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
-            Self::SixteenBitUnsigned(endian) => {
+            Self::U16(endian) => {
                 let v = match endian {
                     Endian::BigEndian => context.clone().read_u16::<BigEndian>(),
                     Endian::LittleEndian => context.clone().read_u16::<LittleEndian>(),
                 };
 
                 match v {
-                    Ok(v) => Ok(v as u64),
+                    Ok(v)  => Ok(v as u64),
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
-            Self::ThirtyTwoBitUnsigned(endian) => {
+            Self::U32(endian) => {
                 let v = match endian {
                     Endian::BigEndian => context.clone().read_u32::<BigEndian>(),
                     Endian::LittleEndian => context.clone().read_u32::<LittleEndian>(),
                 };
 
                 match v {
-                    Ok(v) => Ok(v as u64),
+                    Ok(v)  => Ok(v as u64),
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
-            Self::SixtyFourBitUnsigned(endian) => {
+            Self::U64(endian) => {
                 let v = match endian {
                     Endian::BigEndian => context.clone().read_u64::<BigEndian>(),
                     Endian::LittleEndian => context.clone().read_u64::<LittleEndian>(),
                 };
 
                 match v {
-                    Ok(v) => Ok(v as u64),
+                    Ok(v)  => Ok(v as u64),
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
 
             // None of these can become u32
-            Self::OneTwentyEightBitUnsigned(_) => bail!("Can't convert u128 into u64"),
+            Self::U128(_) => bail!("Can't convert u128 into u64"),
 
-            Self::EightBitSigned               => bail!("Can't convert i8 (signed) into u64"),
-            Self::SixteenBitSigned(_)          => bail!("Can't convert i16 (signed) into u64"),
-            Self::ThirtyTwoBitSigned(_)        => bail!("Can't convert i32 (signed) into u64"),
-            Self::SixtyFourBitSigned(_)        => bail!("Can't convert i64 (signed) into u64"),
-            Self::OneTwentyEightBitSigned(_)   => bail!("Can't convert i128 (signed) into u64"),
+            Self::I8      => bail!("Can't convert i8 (signed) into u64"),
+            Self::I16(_)  => bail!("Can't convert i16 (signed) into u64"),
+            Self::I32(_)  => bail!("Can't convert i32 (signed) into u64"),
+            Self::I64(_)  => bail!("Can't convert i64 (signed) into u64"),
+            Self::I128(_) => bail!("Can't convert i128 (signed) into u64"),
 
-            Self::ThirtyTwoBitFloat(_)         => bail!("Can't convert floating point into u64"),
-            Self::SixtyFourBitFloat(_)         => bail!("Can't convert floating point into u64"),
+            Self::F32(_)  => bail!("Can't convert floating point into u64"),
+            Self::F64(_)  => bail!("Can't convert floating point into u64"),
         }
     }
 
     pub fn to_i64(self, context: &Context) -> SimpleResult<i64> {
         match self {
             // Don't let unsigned values become signed
-            Self::EightBitUnsigned             => bail!("Can't convert i8 (signed) into i64"),
-            Self::SixteenBitUnsigned(_)        => bail!("Can't convert i16 (signed) into i64"),
-            Self::ThirtyTwoBitUnsigned(_)      => bail!("Can't convert i32 (signed) into i64"),
-            Self::SixtyFourBitUnsigned(_)      => bail!("Can't convert i64 (signed) into i64"),
-            Self::OneTwentyEightBitUnsigned(_) => bail!("Can't convert i128 (signed) into i64"),
+            Self::U8      => bail!("Can't convert i8 (signed) into i64"),
+            Self::U16(_)  => bail!("Can't convert i16 (signed) into i64"),
+            Self::U32(_)  => bail!("Can't convert i32 (signed) into i64"),
+            Self::U64(_)  => bail!("Can't convert i64 (signed) into i64"),
+            Self::U128(_) => bail!("Can't convert i128 (signed) into i64"),
 
-            Self::EightBitSigned => {
+            Self::I8 => {
                 match context.clone().read_i8() {
                     Ok(v) => Ok(v as i64),
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
-            Self::SixteenBitSigned(endian) => {
+            Self::I16(endian) => {
                 let v = match endian {
                     Endian::BigEndian => context.clone().read_i16::<BigEndian>(),
                     Endian::LittleEndian => context.clone().read_i16::<LittleEndian>(),
@@ -451,7 +466,7 @@ impl SizedNumberDefinition {
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
-            Self::ThirtyTwoBitSigned(endian) => {
+            Self::I32(endian) => {
                 let v = match endian {
                     Endian::BigEndian => context.clone().read_i32::<BigEndian>(),
                     Endian::LittleEndian => context.clone().read_i32::<LittleEndian>(),
@@ -462,7 +477,7 @@ impl SizedNumberDefinition {
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
-            Self::SixtyFourBitSigned(endian) => {
+            Self::I64(endian) => {
                 let v = match endian {
                     Endian::BigEndian => context.clone().read_i64::<BigEndian>(),
                     Endian::LittleEndian => context.clone().read_i64::<LittleEndian>(),
@@ -476,11 +491,11 @@ impl SizedNumberDefinition {
 
 
             // 128 bit can't go into 64 bit
-            Self::OneTwentyEightBitSigned(_)   => bail!("Can't convert u128 into i64"),
+            Self::I128(_) => bail!("Can't convert u128 into i64"),
 
             // Float certainly can't
-            Self::ThirtyTwoBitFloat(_)         => bail!("Can't convert floating point into i64"),
-            Self::SixtyFourBitFloat(_)         => bail!("Can't convert floating point into i64"),
+            Self::F32(_)  => bail!("Can't convert floating point into i64"),
+            Self::F64(_)  => bail!("Can't convert floating point into i64"),
         }
     }
 }
@@ -534,7 +549,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::EightBitUnsigned.to_string(
+                SizedNumberDefinition::U8.to_string(
                     &context,
                     SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
@@ -582,7 +597,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixteenBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U16(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
@@ -623,7 +638,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::ThirtyTwoBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U32(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
@@ -657,7 +672,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixtyFourBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U64(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
@@ -691,7 +706,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixtyFourBitUnsigned(Endian::LittleEndian).to_string(
+                SizedNumberDefinition::U64(Endian::LittleEndian).to_string(
                     &context,
                     SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
@@ -732,7 +747,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::OneTwentyEightBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U128(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
@@ -765,7 +780,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::EightBitUnsigned.to_string(
+                SizedNumberDefinition::U8.to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -794,7 +809,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::EightBitSigned.to_string(
+                SizedNumberDefinition::I8.to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -823,7 +838,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixteenBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U16(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -852,7 +867,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::ThirtyTwoBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U32(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -881,7 +896,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::ThirtyTwoBitSigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::I32(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -910,7 +925,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixtyFourBitSigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::I64(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -937,7 +952,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::OneTwentyEightBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U128(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -964,7 +979,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::OneTwentyEightBitSigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::I128(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -993,7 +1008,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::EightBitUnsigned.to_string(
+                SizedNumberDefinition::U8.to_string(
                     &context,
                     SizedNumberDisplay::Octal
                 )?
@@ -1021,7 +1036,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixteenBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U16(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Octal
                 )?
@@ -1049,7 +1064,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::ThirtyTwoBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U32(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Octal
                 )?
@@ -1075,7 +1090,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixtyFourBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U64(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Octal
                 )?
@@ -1113,7 +1128,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::EightBitUnsigned.to_string(
+                SizedNumberDefinition::U8.to_string(
                     &context,
                     SizedNumberDisplay::Binary(BinaryOptions {
                         padded: padded,
@@ -1148,7 +1163,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::ThirtyTwoBitUnsigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::U32(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
@@ -1183,7 +1198,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::ThirtyTwoBitSigned(Endian::BigEndian).to_string(
+                SizedNumberDefinition::I32(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
@@ -1214,7 +1229,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::ThirtyTwoBitFloat(Endian::BigEndian).to_string(
+                SizedNumberDefinition::F32(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -1242,7 +1257,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixtyFourBitFloat(Endian::BigEndian).to_string(
+                SizedNumberDefinition::F64(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -1270,7 +1285,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixtyFourBitFloat(Endian::LittleEndian).to_string(
+                SizedNumberDefinition::F64(Endian::LittleEndian).to_string(
                     &context,
                     SizedNumberDisplay::Decimal
                 )?
@@ -1300,7 +1315,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumberDefinition::SixtyFourBitFloat(Endian::BigEndian).to_string(
+                SizedNumberDefinition::F64(Endian::BigEndian).to_string(
                     &context,
                     SizedNumberDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
@@ -1315,19 +1330,19 @@ mod tests {
     #[test]
     fn test_buffer_too_short() -> SimpleResult<()> {
         let data = b"".to_vec();
-        assert!(SizedNumberDefinition::EightBitSigned.to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::I8.to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
 
         let data = b"A".to_vec();
-        assert!(SizedNumberDefinition::SixteenBitSigned(Endian::BigEndian).to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::I16(Endian::BigEndian).to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAA".to_vec();
-        assert!(SizedNumberDefinition::ThirtyTwoBitSigned(Endian::BigEndian).to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::I32(Endian::BigEndian).to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAAAAAA".to_vec();
-        assert!(SizedNumberDefinition::SixtyFourBitSigned(Endian::BigEndian).to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::I64(Endian::BigEndian).to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAAAAAAAAAAAAAA".to_vec();
-        assert!(SizedNumberDefinition::OneTwentyEightBitSigned(Endian::BigEndian).to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::I128(Endian::BigEndian).to_string(&Context::new(&data), SizedNumberDisplay::Decimal).is_err());
 
         Ok(())
     }
