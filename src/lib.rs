@@ -64,7 +64,7 @@ pub enum SizedNumberDisplay {
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub enum SizedNumber {
+pub enum SizedNumberDefinition {
     EightBitUnsigned,
     SixteenBitUnsigned,
     ThirtyTwoBitUnsigned,
@@ -155,7 +155,7 @@ fn display_scientific(v: Box<dyn LowerExp>, options: ScientificOptions) -> Strin
     v
 }
 
-impl SizedNumber {
+impl SizedNumberDefinition {
     fn to_string_internal(self, context: &Context, endian: Endian, display: SizedNumberDisplay) -> io::Result<String> {
         match (self, endian) {
             (Self::EightBitUnsigned, _) => {
@@ -587,7 +587,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::EightBitUnsigned.to_string(
+                SizedNumberDefinition::EightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Hex(HexOptions {
@@ -636,7 +636,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixteenBitUnsigned.to_string(
+                SizedNumberDefinition::SixteenBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Hex(HexOptions {
@@ -678,7 +678,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::ThirtyTwoBitUnsigned.to_string(
+                SizedNumberDefinition::ThirtyTwoBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Hex(HexOptions {
@@ -713,7 +713,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixtyFourBitUnsigned.to_string(
+                SizedNumberDefinition::SixtyFourBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Hex(HexOptions {
@@ -748,7 +748,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixtyFourBitUnsigned.to_string(
+                SizedNumberDefinition::SixtyFourBitUnsigned.to_string(
                     &context,
                     Endian::LittleEndian,
                     SizedNumberDisplay::Hex(HexOptions {
@@ -790,7 +790,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::OneTwentyEightBitUnsigned.to_string(
+                SizedNumberDefinition::OneTwentyEightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Hex(HexOptions {
@@ -824,7 +824,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::EightBitUnsigned.to_string(
+                SizedNumberDefinition::EightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -854,7 +854,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::EightBitSigned.to_string(
+                SizedNumberDefinition::EightBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -884,7 +884,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixteenBitUnsigned.to_string(
+                SizedNumberDefinition::SixteenBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -914,7 +914,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::ThirtyTwoBitUnsigned.to_string(
+                SizedNumberDefinition::ThirtyTwoBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -944,7 +944,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::ThirtyTwoBitSigned.to_string(
+                SizedNumberDefinition::ThirtyTwoBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -974,7 +974,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixtyFourBitSigned.to_string(
+                SizedNumberDefinition::SixtyFourBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -1002,7 +1002,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::OneTwentyEightBitUnsigned.to_string(
+                SizedNumberDefinition::OneTwentyEightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -1030,7 +1030,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::OneTwentyEightBitSigned.to_string(
+                SizedNumberDefinition::OneTwentyEightBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -1060,7 +1060,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::EightBitUnsigned.to_string(
+                SizedNumberDefinition::EightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Octal
@@ -1089,7 +1089,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixteenBitUnsigned.to_string(
+                SizedNumberDefinition::SixteenBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Octal
@@ -1118,7 +1118,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::ThirtyTwoBitUnsigned.to_string(
+                SizedNumberDefinition::ThirtyTwoBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Octal
@@ -1145,7 +1145,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixtyFourBitUnsigned.to_string(
+                SizedNumberDefinition::SixtyFourBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Octal
@@ -1184,7 +1184,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::EightBitUnsigned.to_string(
+                SizedNumberDefinition::EightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Binary(BinaryOptions {
@@ -1220,7 +1220,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::ThirtyTwoBitUnsigned.to_string(
+                SizedNumberDefinition::ThirtyTwoBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Scientific(ScientificOptions {
@@ -1256,7 +1256,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::ThirtyTwoBitSigned.to_string(
+                SizedNumberDefinition::ThirtyTwoBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Scientific(ScientificOptions {
@@ -1288,7 +1288,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::ThirtyTwoBitFloat.to_string(
+                SizedNumberDefinition::ThirtyTwoBitFloat.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -1317,7 +1317,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixtyFourBitFloat.to_string(
+                SizedNumberDefinition::SixtyFourBitFloat.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Decimal
@@ -1346,7 +1346,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixtyFourBitFloat.to_string(
+                SizedNumberDefinition::SixtyFourBitFloat.to_string(
                     &context,
                     Endian::LittleEndian,
                     SizedNumberDisplay::Decimal
@@ -1377,7 +1377,7 @@ mod tests {
 
             assert_eq!(
                 expected,
-                SizedNumber::SixtyFourBitFloat.to_string(
+                SizedNumberDefinition::SixtyFourBitFloat.to_string(
                     &context,
                     Endian::BigEndian,
                     SizedNumberDisplay::Scientific(ScientificOptions {
@@ -1393,19 +1393,19 @@ mod tests {
     #[test]
     fn test_buffer_too_short() -> SimpleResult<()> {
         let data = b"".to_vec();
-        assert!(SizedNumber::EightBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::EightBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         let data = b"A".to_vec();
-        assert!(SizedNumber::SixteenBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::SixteenBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAA".to_vec();
-        assert!(SizedNumber::ThirtyTwoBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::ThirtyTwoBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAAAAAA".to_vec();
-        assert!(SizedNumber::SixtyFourBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::SixtyFourBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAAAAAAAAAAAAAA".to_vec();
-        assert!(SizedNumber::OneTwentyEightBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
+        assert!(SizedNumberDefinition::OneTwentyEightBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         Ok(())
     }
