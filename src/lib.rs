@@ -24,6 +24,7 @@ pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
 
 pub mod display_options;
 
+pub mod real_sized_integer;
 pub mod sized_integer;
 pub use sized_integer::{SizedInteger, SizedIntegerDisplay};
 
