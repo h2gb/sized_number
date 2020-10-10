@@ -39,6 +39,16 @@ pub struct HexOptions {
     pub padded: bool,
 }
 
+impl Default for HexOptions {
+    fn default() -> Self {
+        Self {
+            uppercase: false,
+            prefix: true,
+            padded: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct BinaryOptions {
