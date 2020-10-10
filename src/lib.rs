@@ -359,125 +359,120 @@ impl SizedNumberDefinition {
         }
     }
 
-    // pub fn to_u64(self, context: &Context, endian: Endian) -> SimpleResult<u64> {
-    //     match (self, endian) {
-    //         (Self::EightBitUnsigned, _) => {
-    //             match context.clone().read_u8() {
-    //                 Ok(v) => Ok(v as u64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::SixteenBitUnsigned, Endian::BigEndian) => {
-    //             match context.clone().read_u16::<BigEndian>() {
-    //                 Ok(v) => Ok(v as u64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::SixteenBitUnsigned, Endian::LittleEndian) => {
-    //             match context.clone().read_u16::<LittleEndian>() {
-    //                 Ok(v) => Ok(v as u64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::ThirtyTwoBitUnsigned, Endian::BigEndian) => {
-    //             match context.clone().read_u32::<BigEndian>() {
-    //                 Ok(v) => Ok(v as u64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::ThirtyTwoBitUnsigned, Endian::LittleEndian) => {
-    //             match context.clone().read_u32::<LittleEndian>() {
-    //                 Ok(v) => Ok(v as u64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::SixtyFourBitUnsigned, Endian::BigEndian) => {
-    //             match context.clone().read_u64::<BigEndian>() {
-    //                 Ok(v) => Ok(v as u64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::SixtyFourBitUnsigned, Endian::LittleEndian) => {
-    //             match context.clone().read_u64::<LittleEndian>() {
-    //                 Ok(v) => Ok(v as u64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
+    pub fn to_u64(self, context: &Context) -> SimpleResult<u64> {
+        match self {
+            Self::EightBitUnsigned => {
+                match context.clone().read_u8() {
+                    Ok(v) => Ok(v as u64),
+                    Err(e) => bail!("Failed to read data: {}", e),
+                }
+            },
+            Self::SixteenBitUnsigned(endian) => {
+                let v = match endian {
+                    Endian::BigEndian => context.clone().read_u16::<BigEndian>(),
+                    Endian::LittleEndian => context.clone().read_u16::<LittleEndian>(),
+                };
 
-    //         // None of these can become u32
-    //         (Self::OneTwentyEightBitUnsigned, _) => bail!("Can't convert u128 into u64"),
+                match v {
+                    Ok(v) => Ok(v as u64),
+                    Err(e) => bail!("Failed to read data: {}", e),
+                }
+            },
+            Self::ThirtyTwoBitUnsigned(endian) => {
+                let v = match endian {
+                    Endian::BigEndian => context.clone().read_u32::<BigEndian>(),
+                    Endian::LittleEndian => context.clone().read_u32::<LittleEndian>(),
+                };
 
-    //         (Self::EightBitSigned,            _) => bail!("Can't convert i8 (signed) into u64"),
-    //         (Self::SixteenBitSigned,          _) => bail!("Can't convert i16 (signed) into u64"),
-    //         (Self::ThirtyTwoBitSigned,        _) => bail!("Can't convert i32 (signed) into u64"),
-    //         (Self::SixtyFourBitSigned,        _) => bail!("Can't convert i64 (signed) into u64"),
-    //         (Self::OneTwentyEightBitSigned,   _) => bail!("Can't convert i128 (signed) into u64"),
+                match v {
+                    Ok(v) => Ok(v as u64),
+                    Err(e) => bail!("Failed to read data: {}", e),
+                }
+            },
+            Self::SixtyFourBitUnsigned(endian) => {
+                let v = match endian {
+                    Endian::BigEndian => context.clone().read_u64::<BigEndian>(),
+                    Endian::LittleEndian => context.clone().read_u64::<LittleEndian>(),
+                };
 
-    //         (Self::ThirtyTwoBitFloat,         _) => bail!("Can't convert floating point into u64"),
-    //         (Self::SixtyFourBitFloat,         _) => bail!("Can't convert floating point into u64"),
-    //     }
-    // }
+                match v {
+                    Ok(v) => Ok(v as u64),
+                    Err(e) => bail!("Failed to read data: {}", e),
+                }
+            },
 
-    // pub fn to_i64(self, context: &Context, endian: Endian) -> SimpleResult<i64> {
-    //     match (self, endian) {
-    //         // Don't let unsigned values become signed
-    //         (Self::EightBitUnsigned,          _) => bail!("Can't convert i8 (signed) into i64"),
-    //         (Self::SixteenBitUnsigned,        _) => bail!("Can't convert i16 (signed) into i64"),
-    //         (Self::ThirtyTwoBitUnsigned,      _) => bail!("Can't convert i32 (signed) into i64"),
-    //         (Self::SixtyFourBitUnsigned,      _) => bail!("Can't convert i64 (signed) into i64"),
-    //         (Self::OneTwentyEightBitUnsigned, _) => bail!("Can't convert i128 (signed) into i64"),
+            // None of these can become u32
+            Self::OneTwentyEightBitUnsigned(_) => bail!("Can't convert u128 into u64"),
 
-    //         (Self::EightBitSigned, _) => {
-    //             match context.clone().read_u8() {
-    //                 Ok(v) => Ok(v as i64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::SixteenBitSigned, Endian::BigEndian) => {
-    //             match context.clone().read_u16::<BigEndian>() {
-    //                 Ok(v) => Ok(v as i64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::SixteenBitSigned, Endian::LittleEndian) => {
-    //             match context.clone().read_u16::<LittleEndian>() {
-    //                 Ok(v) => Ok(v as i64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::ThirtyTwoBitSigned, Endian::BigEndian) => {
-    //             match context.clone().read_u32::<BigEndian>() {
-    //                 Ok(v) => Ok(v as i64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::ThirtyTwoBitSigned, Endian::LittleEndian) => {
-    //             match context.clone().read_u32::<LittleEndian>() {
-    //                 Ok(v) => Ok(v as i64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::SixtyFourBitSigned, Endian::BigEndian) => {
-    //             match context.clone().read_i64::<BigEndian>() {
-    //                 Ok(v) => Ok(v as i64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
-    //         (Self::SixtyFourBitSigned, Endian::LittleEndian) => {
-    //             match context.clone().read_i64::<LittleEndian>() {
-    //                 Ok(v) => Ok(v as i64),
-    //                 Err(e) => bail!("Failed to read data: {}", e),
-    //             }
-    //         },
+            Self::EightBitSigned               => bail!("Can't convert i8 (signed) into u64"),
+            Self::SixteenBitSigned(_)          => bail!("Can't convert i16 (signed) into u64"),
+            Self::ThirtyTwoBitSigned(_)        => bail!("Can't convert i32 (signed) into u64"),
+            Self::SixtyFourBitSigned(_)        => bail!("Can't convert i64 (signed) into u64"),
+            Self::OneTwentyEightBitSigned(_)   => bail!("Can't convert i128 (signed) into u64"),
 
-    //         // 128 bit can't go into 64 bit
-    //         (Self::OneTwentyEightBitSigned,   _) => bail!("Can't convert u128 into i64"),
+            Self::ThirtyTwoBitFloat(_)         => bail!("Can't convert floating point into u64"),
+            Self::SixtyFourBitFloat(_)         => bail!("Can't convert floating point into u64"),
+        }
+    }
 
-    //         // Float certainly can't
-    //         (Self::ThirtyTwoBitFloat,         _) => bail!("Can't convert floating point into i64"),
-    //         (Self::SixtyFourBitFloat,         _) => bail!("Can't convert floating point into i64"),
-    //     }
-    // }
+    pub fn to_i64(self, context: &Context) -> SimpleResult<i64> {
+        match self {
+            // Don't let unsigned values become signed
+            Self::EightBitUnsigned             => bail!("Can't convert i8 (signed) into i64"),
+            Self::SixteenBitUnsigned(_)        => bail!("Can't convert i16 (signed) into i64"),
+            Self::ThirtyTwoBitUnsigned(_)      => bail!("Can't convert i32 (signed) into i64"),
+            Self::SixtyFourBitUnsigned(_)      => bail!("Can't convert i64 (signed) into i64"),
+            Self::OneTwentyEightBitUnsigned(_) => bail!("Can't convert i128 (signed) into i64"),
+
+            Self::EightBitSigned => {
+                match context.clone().read_i8() {
+                    Ok(v) => Ok(v as i64),
+                    Err(e) => bail!("Failed to read data: {}", e),
+                }
+            },
+            Self::SixteenBitSigned(endian) => {
+                let v = match endian {
+                    Endian::BigEndian => context.clone().read_i16::<BigEndian>(),
+                    Endian::LittleEndian => context.clone().read_i16::<LittleEndian>(),
+                };
+
+                match v {
+                    Ok(v) => Ok(v as i64),
+                    Err(e) => bail!("Failed to read data: {}", e),
+                }
+            },
+            Self::ThirtyTwoBitSigned(endian) => {
+                let v = match endian {
+                    Endian::BigEndian => context.clone().read_i32::<BigEndian>(),
+                    Endian::LittleEndian => context.clone().read_i32::<LittleEndian>(),
+                };
+
+                match v {
+                    Ok(v) => Ok(v as i64),
+                    Err(e) => bail!("Failed to read data: {}", e),
+                }
+            },
+            Self::SixtyFourBitSigned(endian) => {
+                let v = match endian {
+                    Endian::BigEndian => context.clone().read_i64::<BigEndian>(),
+                    Endian::LittleEndian => context.clone().read_i64::<LittleEndian>(),
+                };
+
+                match v {
+                    Ok(v) => Ok(v as i64),
+                    Err(e) => bail!("Failed to read data: {}", e),
+                }
+            },
+
+
+            // 128 bit can't go into 64 bit
+            Self::OneTwentyEightBitSigned(_)   => bail!("Can't convert u128 into i64"),
+
+            // Float certainly can't
+            Self::ThirtyTwoBitFloat(_)         => bail!("Can't convert floating point into i64"),
+            Self::SixtyFourBitFloat(_)         => bail!("Can't convert floating point into i64"),
+        }
+    }
 }
 
 #[cfg(test)]
