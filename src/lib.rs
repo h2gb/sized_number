@@ -1,4 +1,4 @@
-//! [![Crate](https://img.shields.io/crates/v/sized_integer.svg)](https://crates.io/crates/sized_integer)
+//! [![Crate](https://img.shields.io/crates/v/sized_number.svg)](https://crates.io/crates/sized_number)
 //!
 //! A simple library for reading differently-sized integers and floats.
 //!
@@ -54,7 +54,7 @@ pub enum Endian {
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub enum SizedIntegerDisplay {
+pub enum SizedNumberDisplay {
     Hex(HexOptions),
     Decimal,
     Octal,
@@ -156,251 +156,251 @@ fn display_scientific(v: Box<dyn LowerExp>, options: ScientificOptions) -> Strin
 }
 
 impl SizedNumber {
-    fn to_string_internal(self, context: &Context, endian: Endian, display: SizedIntegerDisplay) -> io::Result<String> {
+    fn to_string_internal(self, context: &Context, endian: Endian, display: SizedNumberDisplay) -> io::Result<String> {
         match (self, endian) {
             (Self::EightBitUnsigned, _) => {
                 let v = Box::new(context.clone().read_u8()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixteenBitUnsigned, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_u16::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixteenBitUnsigned, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_u16::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::ThirtyTwoBitUnsigned, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_u32::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::ThirtyTwoBitUnsigned, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_u32::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixtyFourBitUnsigned, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_u64::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixtyFourBitUnsigned, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_u64::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::OneTwentyEightBitUnsigned, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_u128::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::OneTwentyEightBitUnsigned, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_u128::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::EightBitSigned, _) => {
                 let v = Box::new(context.clone().read_i8()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixteenBitSigned, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_i16::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixteenBitSigned, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_i16::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::ThirtyTwoBitSigned, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_i32::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::ThirtyTwoBitSigned, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_i32::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixtyFourBitSigned, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_i64::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixtyFourBitSigned, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_i64::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::OneTwentyEightBitSigned, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_i128::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::OneTwentyEightBitSigned, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_i128::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(options)        => Ok(display_hex(v, options)),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Ok(display_octal(v)),
-                    SizedIntegerDisplay::Binary(options)     => Ok(display_binary(v, options)),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(options)        => Ok(display_hex(v, options)),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Ok(display_octal(v)),
+                    SizedNumberDisplay::Binary(options)     => Ok(display_binary(v, options)),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::ThirtyTwoBitFloat, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_f32::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
-                    SizedIntegerDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
+                    SizedNumberDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::ThirtyTwoBitFloat, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_f32::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
-                    SizedIntegerDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
+                    SizedNumberDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixtyFourBitFloat, Endian::BigEndian) => {
                 let v = Box::new(context.clone().read_f64::<BigEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
-                    SizedIntegerDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
+                    SizedNumberDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             (Self::SixtyFourBitFloat, Endian::LittleEndian) => {
                 let v = Box::new(context.clone().read_f64::<LittleEndian>()?);
                 match display {
-                    SizedIntegerDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
-                    SizedIntegerDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedIntegerDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
-                    SizedIntegerDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
-                    SizedIntegerDisplay::Scientific(options) => Ok(display_scientific(v, options)),
+                    SizedNumberDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
+                    SizedNumberDisplay::Decimal             => Ok(display_decimal(v)),
+                    SizedNumberDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
+                    SizedNumberDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
+                    SizedNumberDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
         }
-//             SizedIntegerDisplay::Scientific(options) => {
+//             SizedNumberDisplay::Scientific(options) => {
 //                 match options.uppercase {
 //                     false => format!("{:e}", self.value),
 //                     true =>  format!("{:E}", self.value),
@@ -410,7 +410,7 @@ impl SizedNumber {
 //     }
     }
 
-    pub fn to_string(self, context: &Context, endian: Endian, display: SizedIntegerDisplay) -> SimpleResult<String> {
+    pub fn to_string(self, context: &Context, endian: Endian, display: SizedNumberDisplay) -> SimpleResult<String> {
         match self.to_string_internal(context, endian, display) {
             Ok(s) => Ok(s),
             Err(e) => bail!("Couldn't convert to string: {}", e),
@@ -590,7 +590,7 @@ mod tests {
                 SizedNumber::EightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Hex(HexOptions {
+                    SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
                         padded: padded,
@@ -639,7 +639,7 @@ mod tests {
                 SizedNumber::SixteenBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Hex(HexOptions {
+                    SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
                         padded: padded,
@@ -681,7 +681,7 @@ mod tests {
                 SizedNumber::ThirtyTwoBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Hex(HexOptions {
+                    SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
                         padded: padded,
@@ -716,7 +716,7 @@ mod tests {
                 SizedNumber::SixtyFourBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Hex(HexOptions {
+                    SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
                         padded: padded,
@@ -751,7 +751,7 @@ mod tests {
                 SizedNumber::SixtyFourBitUnsigned.to_string(
                     &context,
                     Endian::LittleEndian,
-                    SizedIntegerDisplay::Hex(HexOptions {
+                    SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
                         padded: padded,
@@ -793,7 +793,7 @@ mod tests {
                 SizedNumber::OneTwentyEightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Hex(HexOptions {
+                    SizedNumberDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
                         padded: padded,
@@ -827,7 +827,7 @@ mod tests {
                 SizedNumber::EightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -857,7 +857,7 @@ mod tests {
                 SizedNumber::EightBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -887,7 +887,7 @@ mod tests {
                 SizedNumber::SixteenBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -917,7 +917,7 @@ mod tests {
                 SizedNumber::ThirtyTwoBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -947,7 +947,7 @@ mod tests {
                 SizedNumber::ThirtyTwoBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -977,7 +977,7 @@ mod tests {
                 SizedNumber::SixtyFourBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -1005,7 +1005,7 @@ mod tests {
                 SizedNumber::OneTwentyEightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -1033,7 +1033,7 @@ mod tests {
                 SizedNumber::OneTwentyEightBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -1063,7 +1063,7 @@ mod tests {
                 SizedNumber::EightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Octal
+                    SizedNumberDisplay::Octal
                 )?
             );
         }
@@ -1092,7 +1092,7 @@ mod tests {
                 SizedNumber::SixteenBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Octal
+                    SizedNumberDisplay::Octal
                 )?
             );
         }
@@ -1121,7 +1121,7 @@ mod tests {
                 SizedNumber::ThirtyTwoBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Octal
+                    SizedNumberDisplay::Octal
                 )?
             );
         }
@@ -1148,7 +1148,7 @@ mod tests {
                 SizedNumber::SixtyFourBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Octal
+                    SizedNumberDisplay::Octal
                 )?
             );
         }
@@ -1187,7 +1187,7 @@ mod tests {
                 SizedNumber::EightBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Binary(BinaryOptions {
+                    SizedNumberDisplay::Binary(BinaryOptions {
                         padded: padded,
                     })
                 )?
@@ -1223,7 +1223,7 @@ mod tests {
                 SizedNumber::ThirtyTwoBitUnsigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Scientific(ScientificOptions {
+                    SizedNumberDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
                     })
                 )?
@@ -1259,7 +1259,7 @@ mod tests {
                 SizedNumber::ThirtyTwoBitSigned.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Scientific(ScientificOptions {
+                    SizedNumberDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
                     })
                 )?
@@ -1291,7 +1291,7 @@ mod tests {
                 SizedNumber::ThirtyTwoBitFloat.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -1320,7 +1320,7 @@ mod tests {
                 SizedNumber::SixtyFourBitFloat.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -1349,7 +1349,7 @@ mod tests {
                 SizedNumber::SixtyFourBitFloat.to_string(
                     &context,
                     Endian::LittleEndian,
-                    SizedIntegerDisplay::Decimal
+                    SizedNumberDisplay::Decimal
                 )?
             );
         }
@@ -1380,7 +1380,7 @@ mod tests {
                 SizedNumber::SixtyFourBitFloat.to_string(
                     &context,
                     Endian::BigEndian,
-                    SizedIntegerDisplay::Scientific(ScientificOptions {
+                    SizedNumberDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
                     }),
                 )?
@@ -1393,19 +1393,19 @@ mod tests {
     #[test]
     fn test_buffer_too_short() -> SimpleResult<()> {
         let data = b"".to_vec();
-        assert!(SizedNumber::EightBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedIntegerDisplay::Decimal).is_err());
+        assert!(SizedNumber::EightBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         let data = b"A".to_vec();
-        assert!(SizedNumber::SixteenBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedIntegerDisplay::Decimal).is_err());
+        assert!(SizedNumber::SixteenBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAA".to_vec();
-        assert!(SizedNumber::ThirtyTwoBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedIntegerDisplay::Decimal).is_err());
+        assert!(SizedNumber::ThirtyTwoBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAAAAAA".to_vec();
-        assert!(SizedNumber::SixtyFourBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedIntegerDisplay::Decimal).is_err());
+        assert!(SizedNumber::SixtyFourBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         let data = b"AAAAAAAAAAAAAAA".to_vec();
-        assert!(SizedNumber::OneTwentyEightBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedIntegerDisplay::Decimal).is_err());
+        assert!(SizedNumber::OneTwentyEightBitSigned.to_string(&Context::new(&data), Endian::BigEndian, SizedNumberDisplay::Decimal).is_err());
 
         Ok(())
     }
