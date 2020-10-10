@@ -15,14 +15,21 @@
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use simple_error::{SimpleResult, bail};
-use std::mem;
-use std::fmt::*; // TODO
+use std::fmt::{LowerHex, LowerExp, Octal, Binary, Display}; // TODO
 use std::io;
+use std::mem;
 
 #[cfg(feature = "serialize")]
 use serde::{Serialize, Deserialize};
 
 pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
+
+pub fn new_context(v: &Vec<u8>, offset: u64) -> Context {
+    let mut c = Context::new(v);
+    c.set_position(offset);
+
+    c
+}
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
@@ -510,7 +517,6 @@ mod tests {
     #[test]
     fn test_hex_u8() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase   prefix   padded    expected
@@ -544,8 +550,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -566,7 +571,6 @@ mod tests {
     #[test]
     fn test_hex_u16() -> SimpleResult<()> {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase   prefix   padded    expected
@@ -592,8 +596,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -614,7 +617,6 @@ mod tests {
     #[test]
     fn test_hex_u32() -> SimpleResult<()> {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase   prefix   padded    expected
@@ -633,8 +635,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -655,7 +656,6 @@ mod tests {
     #[test]
     fn test_hex_u64_big_endian() -> SimpleResult<()> {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase   prefix   padded    expected
@@ -667,8 +667,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -689,7 +688,6 @@ mod tests {
     #[test]
     fn test_hex_u64_little_endian() -> SimpleResult<()> {
         let data = b"\x00\x12\x34\xFF\xFF\xFF\xFF\x00".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase   prefix   padded    expected
@@ -701,8 +699,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -723,7 +720,6 @@ mod tests {
     #[test]
     fn test_hex_u128_big_endian() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase   prefix   padded    expected
@@ -742,8 +738,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -764,7 +759,6 @@ mod tests {
     #[test]
     fn test_decimal_u8() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -775,8 +769,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -793,7 +786,6 @@ mod tests {
     #[test]
     fn test_decimal_i8() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -804,8 +796,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -822,7 +813,6 @@ mod tests {
     #[test]
     fn test_decimal_u16() -> SimpleResult<()> {
         let data = b"\x00\xFF\x00\x01\x00\x00\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -833,8 +823,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -851,7 +840,6 @@ mod tests {
     #[test]
     fn test_decimal_u32() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\xff\xff\xff\xff\x7f\xff\xff\xff\x80\x00\x00\x00".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -862,8 +850,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -880,7 +867,6 @@ mod tests {
     #[test]
     fn test_decimal_i32() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\xff\xff\xff\xff\x7f\xff\xff\xff\x80\x00\x00\x00".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -891,8 +877,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -909,7 +894,6 @@ mod tests {
     #[test]
     fn test_decimal_i64() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x7f\xff\xff\xff\xff\xff\xff\xff\x80\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -920,8 +904,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -938,7 +921,6 @@ mod tests {
     #[test]
     fn test_decimal_u128() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -947,8 +929,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -965,7 +946,6 @@ mod tests {
     #[test]
     fn test_decimal_i128() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -974,8 +954,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -992,7 +971,6 @@ mod tests {
     #[test]
     fn test_octal_u8() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -1003,8 +981,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1021,7 +998,6 @@ mod tests {
     #[test]
     fn test_octal_u16() -> SimpleResult<()> {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -1031,8 +1007,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1049,7 +1024,6 @@ mod tests {
     #[test]
     fn test_octal_u32() -> SimpleResult<()> {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -1059,8 +1033,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1077,7 +1050,6 @@ mod tests {
     #[test]
     fn test_octal_u64() -> SimpleResult<()> {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -1085,8 +1057,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1103,7 +1074,6 @@ mod tests {
     #[test]
     fn test_binary_i8() -> SimpleResult<()> {
         let data = b"\x00\x00\x12\xab\xFF\xFF\xFF\xFF".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index   padded   expected
@@ -1123,8 +1093,7 @@ mod tests {
         ];
 
         for (index, padded, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1143,7 +1112,6 @@ mod tests {
     #[test]
     fn test_scientific_u32() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x7f\xff\xff\xff\x80\x00\x00\x00\xff\xff\xff\xff".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase  expected
@@ -1158,8 +1126,7 @@ mod tests {
         ];
 
         for (index, uppercase, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1178,7 +1145,6 @@ mod tests {
     #[test]
     fn test_scientific_i32() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\x7f\xff\xff\xff\x80\x00\x00\x00\xff\xff\xff\xff".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase  expected
@@ -1193,8 +1159,7 @@ mod tests {
         ];
 
         for (index, uppercase, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1213,7 +1178,6 @@ mod tests {
     #[test]
     fn test_decimal_f32() -> SimpleResult<()> {
         let data = b"\x00\x00\x00\x00\xff\xff\xff\xff\x41\xc8\x00\x00\x40\x48\xf5\xc3".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -1224,8 +1188,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1243,7 +1206,6 @@ mod tests {
     fn test_decimal_f64_big_endian() -> SimpleResult<()> {
         // I wrote and disassembled a simple C program to get these strings.. double is hard
         let data = b"\x40\x09\x1e\xb8\x51\xeb\x85\x1f\x40\x09\x33\x33\x33\x33\x33\x33".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -1252,8 +1214,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1271,7 +1232,6 @@ mod tests {
     fn test_decimal_f64_little_endian() -> SimpleResult<()> {
         // I wrote and disassembled a simple C program to get these strings.. double is hard
         let data = b"\x1F\x85\xEB\x51\xB8\x1E\x09\x40\x33\x33\x33\x33\x33\x33\x09\x40".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  expected
@@ -1280,8 +1240,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
@@ -1299,7 +1258,6 @@ mod tests {
     fn test_exponent_f64() -> SimpleResult<()> {
         // I wrote and disassembled a simple C program to get these strings.. double is hard
         let data = b"\x40\x09\x1e\xb8\x51\xeb\x85\x1f\x40\x09\x33\x33\x33\x33\x33\x33".to_vec();
-        let context = Context::new(&data);
 
         let tests = vec![
             // index  uppercase expected
@@ -1310,8 +1268,7 @@ mod tests {
         ];
 
         for (index, uppercase, expected) in tests {
-            let mut context = context.clone();
-            context.set_position(index);
+            let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
