@@ -156,6 +156,25 @@ fn display_scientific(v: Box<dyn LowerExp>, options: ScientificOptions) -> Strin
 }
 
 impl SizedNumberDefinition {
+    pub fn size(self) -> u64 {
+        match self {
+            Self::EightBitUnsigned             => 8,
+            Self::SixteenBitUnsigned(_)        => 16,
+            Self::ThirtyTwoBitUnsigned(_)      => 32,
+            Self::SixtyFourBitUnsigned(_)      => 64,
+            Self::OneTwentyEightBitUnsigned(_) => 128,
+
+            Self::EightBitSigned               => 8,
+            Self::SixteenBitSigned(_)          => 16,
+            Self::ThirtyTwoBitSigned(_)        => 32,
+            Self::SixtyFourBitSigned(_)        => 64,
+            Self::OneTwentyEightBitSigned(_)   => 128,
+
+            Self::ThirtyTwoBitFloat(_)         => 32,
+            Self::SixtyFourBitFloat(_)         => 64,
+        }
+    }
+
     fn to_string_internal(self, context: &Context, display: SizedNumberDisplay) -> io::Result<String> {
         match self {
             Self::EightBitUnsigned => {
