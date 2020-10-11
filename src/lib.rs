@@ -25,7 +25,7 @@
 //! configure how it should convert:
 //!
 //! ```
-//! use sized_number::{new_context, SizedDefinition, Endian, SizedDisplay, HexOptions, BinaryOptions, ScientificOptions};
+//! use sized_number::*;
 //!
 //! let buffer = b"ABCD".to_vec();
 //! let context = new_context(&buffer, 0);
@@ -33,9 +33,9 @@
 //!
 //! assert_eq!("0x41424344", d.to_string(&context, SizedDisplay::Hex(HexOptions::default())).unwrap());
 //! assert_eq!("1094861636", d.to_string(&context, SizedDisplay::Decimal).unwrap());
-//! assert_eq!("10120441504", d.to_string(&context, SizedDisplay::Octal).unwrap());
-//! assert_eq!("01000001010000100100001101000100", d.to_string(&context, SizedDisplay::Binary(BinaryOptions::default())).unwrap());
-//! assert_eq!("1.094861636e9", d.to_string(&context, SizedDisplay::Scientific(ScientificOptions::default())).unwrap());
+//! assert_eq!("0o10120441504", d.to_string(&context, SizedDisplay::Octal(Default::default())).unwrap());
+//! assert_eq!("0b01000001010000100100001101000100", d.to_string(&context, SizedDisplay::Binary(Default::default())).unwrap());
+//! assert_eq!("1.094861636e9", d.to_string(&context, SizedDisplay::Scientific(Default::default())).unwrap());
 //! ```
 //!
 //! The string conversion is designed to be "stamp"-able - you can define the
@@ -123,10 +123,33 @@ impl Default for HexOptions {
     }
 }
 
+/// Configure display options for [`SizedDisplay::Octal`]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+pub struct OctalOptions {
+    /// Prefix octal strings with `0o`
+    pub prefix: bool,
+
+    /// Zero-pad octal strings to the full width - `0001` vs `1`)
+    pub padded: bool,
+}
+
+impl Default for OctalOptions {
+    fn default() -> Self {
+        Self {
+            prefix: true,
+            padded: false,
+        }
+    }
+}
+
 /// Configure display options for [`SizedDisplay::Binary`]
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct BinaryOptions {
+    /// Prefix binary strings with `0b`
+    pub prefix: bool,
+
     /// Zero-pad binary strings to the full width - `00000001` vs `1`
     pub padded: bool,
 }
@@ -135,6 +158,7 @@ impl Default for BinaryOptions {
     fn default() -> Self {
         Self {
             padded: true,
+            prefix: true,
         }
     }
 }
@@ -211,10 +235,10 @@ pub enum SizedDisplay {
     /// let buffer = b"\x20".to_vec();
     /// let context = new_context(&buffer, 0);
     ///
-    /// assert_eq!("40", SizedDefinition::U8.to_string(&context, SizedDisplay::Octal).unwrap());
+    /// assert_eq!("0o40", SizedDefinition::U8.to_string(&context, SizedDisplay::Octal(Default::default())).unwrap());
     ///
     /// ```
-    Octal,
+    Octal(OctalOptions),
 
     /// Display in binary. Padding can be enabled with `BinaryOptions`
     ///
@@ -225,7 +249,7 @@ pub enum SizedDisplay {
     /// let buffer = b"\x01".to_vec();
     /// let context = new_context(&buffer, 0);
     ///
-    /// assert_eq!("00000001", SizedDefinition::U8.to_string(&context, SizedDisplay::Binary(Default::default())).unwrap());
+    /// assert_eq!("0b00000001", SizedDefinition::U8.to_string(&context, SizedDisplay::Binary(Default::default())).unwrap());
     /// ```
     Binary(BinaryOptions),
 
@@ -341,19 +365,42 @@ fn display_decimal(v: Box<dyn Display>) -> String {
 }
 
 /// An internal function to help with displaying octal
-fn display_octal(v: Box<dyn Octal>) -> String {
+fn display_octal(v: Box<dyn Octal>, options: OctalOptions) -> String {
     let v = v.as_ref();
 
-    format!("{:o}", v)
+    if options.padded {
+        match (options.prefix, mem::size_of_val(v)) {
+            (false, 1)  => format!("{:03o}", v),
+            (false, 2)  => format!("{:06o}", v),
+            (false, 4)  => format!("{:011o}", v),
+            (false, 8)  => format!("{:022o}", v),
+            (false, 16) => format!("{:043o}", v),
+            (false, _) => format!("{:o}", v),
+
+            (true,  1)  => format!("0o{:03o}", v),
+            (true,  2)  => format!("0o{:06o}", v),
+            (true,  4)  => format!("0o{:011o}", v),
+            (true,  8)  => format!("0o{:022o}", v),
+            (true,  16) => format!("0o{:043o}", v),
+
+            (true,   _) => format!("0o{:o}", v),
+        }
+    } else {
+        match options.prefix {
+            false => format!("{:o}", v),
+            true  => format!("0o{:o}", v),
+        }
+    }
 }
 
 /// An internal function to help with displaying binary
 fn display_binary(v: Box<dyn Binary>, options: BinaryOptions) -> String {
     let v = v.as_ref();
 
-    match options.padded {
-        false => format!("{:b}", v),
-        true => {
+    match (options.padded, options.prefix) {
+        (false, false) => format!("{:b}", v),
+        (false, true ) => format!("0b{:b}", v),
+        (true, false) => {
             match mem::size_of_val(v) * 8 {
                 8   => format!("{:08b}",   v),
                 16  => format!("{:016b}",  v),
@@ -361,6 +408,16 @@ fn display_binary(v: Box<dyn Binary>, options: BinaryOptions) -> String {
                 64  => format!("{:064b}",  v),
                 128 => format!("{:0128b}", v),
                 _   => format!("{:b}",     v),
+            }
+        },
+        (true, true) => {
+            match mem::size_of_val(v) * 8 {
+                8   => format!("0b{:08b}",   v),
+                16  => format!("0b{:016b}",  v),
+                32  => format!("0b{:032b}",  v),
+                64  => format!("0b{:064b}",  v),
+                128 => format!("0b{:0128b}", v),
+                _   => format!("0b{:b}",     v),
             }
         }
     }
@@ -414,7 +471,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -429,7 +486,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -444,7 +501,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -459,7 +516,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -474,7 +531,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -486,7 +543,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -501,7 +558,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -516,7 +573,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -531,7 +588,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -546,7 +603,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Ok(display_octal(v)),
+                    SizedDisplay::Octal(options)      => Ok(display_octal(v, options)),
                     SizedDisplay::Binary(options)     => Ok(display_binary(v, options)),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -561,7 +618,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
+                    SizedDisplay::Octal(_)            => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
                     SizedDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -576,7 +633,7 @@ impl SizedDefinition {
                 match display {
                     SizedDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal               => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
+                    SizedDisplay::Octal(_)            => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
                     SizedDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
@@ -1189,21 +1246,42 @@ mod tests {
         let data = b"\x00\x7F\x80\xFF".to_vec();
 
         let tests = vec![
-            // index  expected
-            (   0,    "0"),
-            (   1,    "177"),
-            (   2,    "200"),
-            (   3,    "377"),
+            // index  prefix   padded   expected
+            (   0,    false,   false,   "0"),
+            (   1,    false,   false,   "177"),
+            (   2,    false,   false,   "200"),
+            (   3,    false,   false,   "377"),
+
+            // index  prefix   padded   expected
+            (   0,    false,   true,    "000"),
+            (   1,    false,   true,    "177"),
+            (   2,    false,   true,    "200"),
+            (   3,    false,   true,    "377"),
+
+            // index  prefix   padded   expected
+            (   0,    true,    false,   "0o0"),
+            (   1,    true,    false,   "0o177"),
+            (   2,    true,    false,   "0o200"),
+            (   3,    true,    false,   "0o377"),
+
+            // index  prefix   padded   expected
+            (   0,    true,    true,    "0o000"),
+            (   1,    true,    true,    "0o177"),
+            (   2,    true,    true,    "0o200"),
+            (   3,    true,    true,    "0o377"),
         ];
 
-        for (index, expected) in tests {
+        for (index, prefix, padded, expected) in tests {
             let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
                 SizedDefinition::U8.to_string(
                     &context,
-                    SizedDisplay::Octal
+                    SizedDisplay::Octal(OctalOptions {
+                        prefix: prefix,
+                        padded: padded,
+                    })
                 )?
             );
         }
@@ -1216,20 +1294,38 @@ mod tests {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
 
         let tests = vec![
-            // index  expected
-            (   0,    "0"),
-            (   2,    "11064"),
-            (   4,    "177777"),
+            // index  prefix   padded   expected
+            (   0,    false,   false,   "0"),
+            (   2,    false,   false,   "11064"),
+            (   4,    false,   false,   "177777"),
+
+            // index  prefix   padded   expected
+            (   0,    false,   true,    "000000"),
+            (   2,    false,   true,    "011064"),
+            (   4,    false,   true,    "177777"),
+
+            // index  prefix   padded   expected
+            (   0,    true,    false,   "0o0"),
+            (   2,    true,    false,   "0o11064"),
+            (   4,    true,    false,   "0o177777"),
+
+            // index  prefix   padded   expected
+            (   0,    true,    true,    "0o000000"),
+            (   2,    true,    true,    "0o011064"),
+            (   4,    true,    true,    "0o177777"),
         ];
 
-        for (index, expected) in tests {
+        for (index, prefix, padded, expected) in tests {
             let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
                 SizedDefinition::U16(Endian::Big).to_string(
                     &context,
-                    SizedDisplay::Octal
+                    SizedDisplay::Octal(OctalOptions {
+                        prefix: prefix,
+                        padded: padded,
+                    })
                 )?
             );
         }
@@ -1242,20 +1338,38 @@ mod tests {
         let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
 
         let tests = vec![
-            // index  expected
-            (   0,    "11064"),
-            (   2,    "2215177777"),
-            (   4,    "37777777777"),
+            // index  prefix  padded   expected
+            (   0,    false,  false,   "11064"),
+            (   2,    false,  false,   "2215177777"),
+            (   4,    false,  false,   "37777777777"),
+
+            // index  prefix  padded   expected
+            (   0,    false,  true,   "00000011064"),
+            (   2,    false,  true,   "02215177777"),
+            (   4,    false,  true,   "37777777777"),
+
+            // index  prefix  padded   expected
+            (   0,    true,  false,   "0o11064"),
+            (   2,    true,  false,   "0o2215177777"),
+            (   4,    true,  false,   "0o37777777777"),
+
+            // index  prefix  padded   expected
+            (   0,    true,  true,     "0o00000011064"),
+            (   2,    true,  true,     "0o02215177777"),
+            (   4,    true,  true,     "0o37777777777"),
         ];
 
-        for (index, expected) in tests {
+        for (index, prefix, padded, expected) in tests {
             let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
                 SizedDefinition::U32(Endian::Big).to_string(
                     &context,
-                    SizedDisplay::Octal
+                    SizedDisplay::Octal(OctalOptions {
+                        prefix: prefix,
+                        padded: padded,
+                    })
                 )?
             );
         }
@@ -1265,21 +1379,38 @@ mod tests {
 
     #[test]
     fn test_octal_u64() -> SimpleResult<()> {
-        let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF".to_vec();
+        let data = b"\x00\x00\x12\x34\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF".to_vec();
 
         let tests = vec![
-            // index  expected
-            (   0,    "443237777777777"),
+            // index  prefix  padded  expected
+            (   0,    false,  false,  "443237777777777"),
+            (   8,    false,  false,  "1777777777777777777777"),
+
+            // index  prefix  padded  expected
+            (   0,    false,  true,   "0000000443237777777777"),
+            (   8,    false,  true,   "1777777777777777777777"),
+
+            // index  prefix  padded  expected
+            (   0,    true,   false,  "0o443237777777777"),
+            (   8,    true,   false,  "0o1777777777777777777777"),
+
+            // index  prefix  padded  expected
+            (   0,    true,   true,   "0o0000000443237777777777"),
+            (   8,    true,   true,   "0o1777777777777777777777"),
+
         ];
 
-        for (index, expected) in tests {
+        for (index, prefix, padded, expected) in tests {
             let context = new_context(&data, index);
 
             assert_eq!(
                 expected,
                 SizedDefinition::U64(Endian::Big).to_string(
                     &context,
-                    SizedDisplay::Octal
+                    SizedDisplay::Octal(OctalOptions {
+                        prefix: prefix,
+                        padded: padded,
+                    })
                 )?
             );
         }
@@ -1292,23 +1423,23 @@ mod tests {
         let data = b"\x00\x00\x12\xab\xFF\xFF\xFF\xFF".to_vec();
 
         let tests = vec![
-            // index   padded   expected
-            (   0,     true,    "00000000"),
-            (   1,     true,    "00000000"),
-            (   2,     true,    "00010010"),
-            (   3,     true,    "10101011"),
-            (   4,     true,    "11111111"),
-            (   5,     true,    "11111111"),
+            // index    prefix      padded   expected
+            (   0,      true,       true,    "0b00000000"),
+            (   1,      true,       true,    "0b00000000"),
+            (   2,      true,       true,    "0b00010010"),
+            (   3,      true,       true,    "0b10101011"),
+            (   4,      true,       true,    "0b11111111"),
+            (   5,      true,       true,    "0b11111111"),
 
-            (   0,     false,   "0"),
-            (   1,     false,   "0"),
-            (   2,     false,   "10010"),
-            (   3,     false,   "10101011"),
-            (   4,     false,   "11111111"),
-            (   5,     false,   "11111111"),
+            (   0,      false,      false,   "0"),
+            (   1,      false,      false,   "0"),
+            (   2,      false,      false,   "10010"),
+            (   3,      false,      false,   "10101011"),
+            (   4,      false,      false,   "11111111"),
+            (   5,      false,      false,   "11111111"),
         ];
 
-        for (index, padded, expected) in tests {
+        for (index, padded, prefix, expected) in tests {
             let context = new_context(&data, index);
 
             assert_eq!(
@@ -1316,6 +1447,7 @@ mod tests {
                 SizedDefinition::U8.to_string(
                     &context,
                     SizedDisplay::Binary(BinaryOptions {
+                        prefix: prefix,
                         padded: padded,
                     })
                 )?
