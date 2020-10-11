@@ -3,19 +3,66 @@
 //! A simple library for reading differently-sized integers and floats.
 //!
 //! While writing h2gb, I needed a way to dynamically read integers from a
-//! Vec of u8 bytes. Libs like `byteorder` and `io::Cursor` nearly has the
-//! right functionality, but weren't quite flexible enough.
+//! Vec of u8 bytes. Libraries like [`byteorder`] and [`io::Cursor`] nearly
+//! have the right functionality, but weren't quite flexible enough.
 //!
-//! This library wraps / uses those modules to simplify reading arbitrary values
-//! from a cursor, and storing / displaying them with user-controlled settings.
+//! This library defines a [`Context`] type, which is just a thin wrapper for a
+//! [`std::io::Cursor`]. It's also a super cheap type that can be cloned as
+//! needed.
 //!
-//! # Example
+//! To create an instance, you need to first define how the number will be
+//! defined. Using the [`SizedDefinition`] enum, choose a size and a
+//! [`Endian`]:
 //!
-//! TODO
+//! ```
+//! use sized_number::{SizedDefinition, Endian};
+//!
+//! let d = SizedDefinition::U32(Endian::Big);
+//! ```
+//!
+//! Once you have an instance of [`SizedDefinition`], it can convert a
+//! [`Context`] into a string in a variety of formats - use `SizedDisplay` to
+//! configure how it should convert:
+//!
+//! ```
+//! use sized_number::{new_context, SizedDefinition, Endian, SizedDisplay, HexOptions, BinaryOptions, ScientificOptions};
+//!
+//! let buffer = b"ABCD".to_vec();
+//! let context = new_context(&buffer, 0);
+//! let d = SizedDefinition::U32(Endian::Big);
+//!
+//! assert_eq!("0x41424344", d.to_string(&context, SizedDisplay::Hex(HexOptions::default())).unwrap());
+//! assert_eq!("1094861636", d.to_string(&context, SizedDisplay::Decimal).unwrap());
+//! assert_eq!("10120441504", d.to_string(&context, SizedDisplay::Octal).unwrap());
+//! assert_eq!("01000001010000100100001101000100", d.to_string(&context, SizedDisplay::Binary(BinaryOptions::default())).unwrap());
+//! assert_eq!("1.094861636e9", d.to_string(&context, SizedDisplay::Scientific(ScientificOptions::default())).unwrap());
+//! ```
+//!
+//! The string conversion is designed to be "stamp"-able - you can define the
+//! format once, then apply it in multiple places or with multiple formats! No
+//! context or data is stored as part of the type.
+//!
+//! In addition to formatting a string, 64-bit and smaller unsigned instances
+//! of [`SizedDefinition`] can be converted into [`u64`] (unsigned) integers, and
+//! 64-bit and smaller signed instances can be converted into [`i64`] (signed)
+//! integers:
+//!
+//! ```
+//! use sized_number::{new_context, SizedDefinition, Endian, SizedDisplay, HexOptions, BinaryOptions, ScientificOptions};
+//!
+//! let buffer = b"\x01\x02\x03\x04\x05\x06\x07\x08".to_vec();
+//! let context = new_context(&buffer, 0);
+//! let d = SizedDefinition::U32(Endian::Big);
+//!
+//! assert_eq!(0x01,               SizedDefinition::U8.to_u64(&context).unwrap());
+//! assert_eq!(0x0102,             SizedDefinition::U16(Endian::Big).to_u64(&context).unwrap());
+//! assert_eq!(0x01020304,         SizedDefinition::U32(Endian::Big).to_u64(&context).unwrap());
+//! assert_eq!(0x0102030405060708, SizedDefinition::U64(Endian::Big).to_u64(&context).unwrap());
+//! ```
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use simple_error::{SimpleResult, bail};
-use std::fmt::{LowerHex, LowerExp, Octal, Binary, Display}; // TODO
+use std::fmt::{LowerHex, LowerExp, Octal, Binary, Display};
 use std::io;
 use std::mem;
 
@@ -24,6 +71,10 @@ use serde::{Serialize, Deserialize};
 
 pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
 
+/// Create a new context from a [`u8`] vector and an offset.
+///
+/// No error checking is done, and this can't fail. But if the context is
+/// too high, all reads will fail.
 pub fn new_context(v: &Vec<u8>, offset: u64) -> Context {
     let mut c = Context::new(v);
     c.set_position(offset);
@@ -31,9 +82,12 @@ pub fn new_context(v: &Vec<u8>, offset: u64) -> Context {
     c
 }
 
+/// Configure display options for `SizedDisplay::Scientific`
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct ScientificOptions {
+    /// Print the `e` in the scientific notation will be uppercase (`1E0`
+    /// instead of `1e0`).
     pub uppercase: bool,
 }
 
@@ -45,11 +99,17 @@ impl Default for ScientificOptions {
     }
 }
 
+/// Configure display options for [`SizedDisplay::Hex`]
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct HexOptions {
+    /// Print hex characters uppercase - `1A2B` vs `1a2b`.
     pub uppercase: bool,
+
+    /// Prefix hex strings with `0x`
     pub prefix: bool,
+
+    /// Zero-pad hex strings to the full width - `0001` vs `1`)
     pub padded: bool,
 }
 
@@ -63,9 +123,11 @@ impl Default for HexOptions {
     }
 }
 
+/// Configure display options for [`SizedDisplay::Binary`]
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct BinaryOptions {
+    /// Zero-pad binary strings to the full width - `00000001` vs `1`
     pub padded: bool,
 }
 
@@ -77,42 +139,168 @@ impl Default for BinaryOptions {
     }
 }
 
+/// Define the endianness for reading multi-byte integers
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub enum Endian {
-    Little,
+    /// Most significant byte is first (eg, `0x1234` -> `12 34`)
     Big,
+
+    /// Most significant byte is last (eg, `0x1234` -> `34 12`)
+    Little,
 }
 
+/// Display options with their associated configurations.
+///
+/// This is the core for configuring the output. It tries to make the best
+/// decisions based on the datatype. When displaying a padded hex value, for
+/// example, it's padded to the exact width of the field, no matter what that
+/// is.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub enum SizedDisplay {
+    /// Display in hexadecimal.
+    ///
+    /// Example:
+    /// ```
+    /// use sized_number::*;
+    ///
+    /// let buffer = b"\x00\xab".to_vec();
+    /// let context = new_context(&buffer, 0);
+    /// let d = SizedDefinition::U16(Endian::Big);
+    ///
+    /// assert_eq!("0x00ab", d.to_string(&context, SizedDisplay::Hex(HexOptions::default())).unwrap());
+    ///
+    /// assert_eq!("00AB", d.to_string(&context, SizedDisplay::Hex(HexOptions {
+    ///     uppercase: true,
+    ///     prefix: false,
+    ///     padded: true,
+    /// })).unwrap());
+    ///
+    /// assert_eq!("0xab", d.to_string(&context, SizedDisplay::Hex(HexOptions {
+    ///     uppercase: false,
+    ///     prefix: true,
+    ///     padded: false,
+    /// })).unwrap());
+    ///
+    /// ```
     Hex(HexOptions),
+
+    /// Display in decimal. Whether the display is signed or not depends on the
+    /// `SizedDefinition` type chosen.
+    ///
+    /// Example:
+    /// ```
+    /// use sized_number::*;
+    ///
+    /// let buffer = b"\xFF\xFF".to_vec();
+    /// let context = new_context(&buffer, 0);
+    ///
+    /// assert_eq!("255", SizedDefinition::U8.to_string(&context, SizedDisplay::Decimal).unwrap());
+    /// assert_eq!("-1", SizedDefinition::I8.to_string(&context, SizedDisplay::Decimal).unwrap());
+    ///
+    /// ```
     Decimal,
+
+    /// Display in octal.
+    ///
+    /// Example:
+    /// ```
+    /// use sized_number::*;
+    ///
+    /// let buffer = b"\x20".to_vec();
+    /// let context = new_context(&buffer, 0);
+    ///
+    /// assert_eq!("40", SizedDefinition::U8.to_string(&context, SizedDisplay::Octal).unwrap());
+    ///
+    /// ```
     Octal,
+
+    /// Display in binary. Padding can be enabled with `BinaryOptions`
+    ///
+    /// Example:
+    /// ```
+    /// use sized_number::*;
+    ///
+    /// let buffer = b"\x01".to_vec();
+    /// let context = new_context(&buffer, 0);
+    ///
+    /// assert_eq!("00000001", SizedDefinition::U8.to_string(&context, SizedDisplay::Binary(Default::default())).unwrap());
+    /// ```
     Binary(BinaryOptions),
+
+    /// Display in scientific / exponent notation. The case of `e` can be
+    /// changed with `ScientificOptions`.
+    ///
+    /// Example:
+    /// ```
+    /// use sized_number::*;
+    ///
+    /// let buffer = b"\x64".to_vec();
+    /// let context = new_context(&buffer, 0);
+    ///
+    /// assert_eq!("1e2", SizedDefinition::U8.to_string(&context, SizedDisplay::Scientific(Default::default())).unwrap());
+    /// ```
     Scientific(ScientificOptions),
 }
 
+/// Define how data is read from a Context.
+///
+/// This is the core of `sized_number` - it's how the numbers are defined in
+/// memory.
+///
+/// The options all pretty cleanly map to the equivalent datatypes.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub enum SizedDefinition {
+    /// Unsigned 8-bit integer
     U8,
+
+    /// Unsigned 16-bit integer
     U16(Endian),
+
+    /// Unsigned 32-bit integer
     U32(Endian),
+
+    /// Unsigned 64-bit integer
     U64(Endian),
+
+    /// Unsigned 128-bit integer
     U128(Endian),
 
+    /// Signed 8-bit integer
     I8,
+
+    /// Signed 16-bit integer
     I16(Endian),
+
+    /// Signed 32-bit integer
     I32(Endian),
+
+    /// Signed 64-bit integer
     I64(Endian),
+
+    /// Signed 128-bit integer
     I128(Endian),
 
+
+    /// Signed 32-bit (aka, single precision) floating point.
+    ///
+    /// Note: floats can only be displayed as `SizedDisplay::Decimal` or
+    /// `SizedDisplay::Scientific`.
     F32(Endian),
+
+    /// Signed 64-bit (aka, double precision) floating point
+    ///
+    /// Note: floats can only be displayed as `SizedDisplay::Decimal` or
+    /// `SizedDisplay::Scientific`.
     F64(Endian),
 }
 
+/// An internal function to help with displaying hex.
+///
+/// Unfortunately, I don't know of a way to require both [`UpperHex`] and
+/// [`LowerHex`] traits, so I do some manual formatting :-/
 fn display_hex(v: Box<dyn LowerHex>, options: HexOptions) -> String {
     let v = v.as_ref();
 
@@ -147,18 +335,19 @@ fn display_hex(v: Box<dyn LowerHex>, options: HexOptions) -> String {
     h
 }
 
+/// An internal function to help with displaying decimal
 fn display_decimal(v: Box<dyn Display>) -> String {
-    let v = v.as_ref();
-
-    format!("{}", v)
+    format!("{}", v.as_ref())
 }
 
+/// An internal function to help with displaying octal
 fn display_octal(v: Box<dyn Octal>) -> String {
     let v = v.as_ref();
 
     format!("{:o}", v)
 }
 
+/// An internal function to help with displaying binary
 fn display_binary(v: Box<dyn Binary>, options: BinaryOptions) -> String {
     let v = v.as_ref();
 
@@ -177,6 +366,8 @@ fn display_binary(v: Box<dyn Binary>, options: BinaryOptions) -> String {
     }
 }
 
+/// An internal function to help with displaying scientific / exponential
+/// notation.
 fn display_scientific(v: Box<dyn LowerExp>, options: ScientificOptions) -> String {
     let mut v = format!("{:e}", v.as_ref());
 
@@ -188,6 +379,7 @@ fn display_scientific(v: Box<dyn LowerExp>, options: ScientificOptions) -> Strin
 }
 
 impl SizedDefinition {
+    /// Returns the size, in bytes, of the current type.
     pub fn size(self) -> u64 {
         match self {
             Self::U8      => 1,
@@ -207,6 +399,14 @@ impl SizedDefinition {
         }
     }
 
+    /// Implement this as an internal function, because we want to map the
+    /// error to our own error type, and this got really, really, really long.
+    ///
+    /// Unfortunately, there isn't a great way (that I know of) to work with
+    /// differently-sized basic types, traits just don't have enough power, so
+    /// there is a lot of repeated code here.
+    ///
+    /// It might be fun to look into macros some day.
     fn to_string_internal(self, context: &Context, display: SizedDisplay) -> io::Result<String> {
         match self {
             Self::U8 => {
@@ -384,6 +584,8 @@ impl SizedDefinition {
         }
     }
 
+    /// Read data from the context, based on the [`SizedDefinition`], and
+    /// display it based on the `SizedDisplay`
     pub fn to_string(self, context: &Context, display: SizedDisplay) -> SimpleResult<String> {
         match self.to_string_internal(context, display) {
             Ok(s) => Ok(s),
@@ -391,6 +593,11 @@ impl SizedDefinition {
         }
     }
 
+    /// Convert to an unsigned 64-bit value, if possible.
+    ///
+    /// Only unsigned values of 64-bits or less can be converted to a [`u64`].
+    /// Everything else will return an error - we don't typecast signed to
+    /// unsigned.
     pub fn to_u64(self, context: &Context) -> SimpleResult<u64> {
         match self {
             Self::U8 => {
@@ -447,6 +654,15 @@ impl SizedDefinition {
         }
     }
 
+    /// Convert to a signed 64-bit value, if possible.
+    ///
+    /// This will correctly extend the sign. So, for example, reading a
+    /// `SizedDefinition::I8` with a value of `FF` will convert to the [`i64`]
+    /// value `-1`, or `0xFFFFFFFFFFFFFFFF`.
+    ///
+    /// Only signed values of 64-bits or less can be converted to an [`i64`].
+    /// Everything else will return an error - we don't typecast unsigned to
+    /// signed.
     pub fn to_i64(self, context: &Context) -> SimpleResult<i64> {
         match self {
             // Don't let unsigned values become signed
