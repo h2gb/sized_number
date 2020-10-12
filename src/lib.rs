@@ -650,6 +650,46 @@ impl SizedDefinition {
         }
     }
 
+    /// Returns `true` for variants that can succeed in [`to_u64`]
+    pub fn can_be_u64(self) -> bool {
+        match self {
+            Self::U8      => true,
+            Self::U16(_)  => true,
+            Self::U32(_)  => true,
+            Self::U64(_)  => true,
+            Self::U128(_) => false,
+
+            Self::I8      => false,
+            Self::I16(_)  => false,
+            Self::I32(_)  => false,
+            Self::I64(_)  => false,
+            Self::I128(_) => false,
+
+            Self::F32(_)  => false,
+            Self::F64(_)  => false,
+        }
+    }
+
+    /// Returns `true` for variants that can succeed in [`to_i64`]
+    pub fn can_be_i64(self) -> bool {
+        match self {
+            Self::U8      => false,
+            Self::U16(_)  => false,
+            Self::U32(_)  => false,
+            Self::U64(_)  => false,
+            Self::U128(_) => false,
+
+            Self::I8      => true,
+            Self::I16(_)  => true,
+            Self::I32(_)  => true,
+            Self::I64(_)  => true,
+            Self::I128(_) => false,
+
+            Self::F32(_)  => false,
+            Self::F64(_)  => false,
+        }
+    }
+
     /// Convert to an unsigned 64-bit value, if possible.
     ///
     /// Only unsigned values of 64-bits or less can be converted to a [`u64`].
