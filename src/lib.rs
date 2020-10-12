@@ -114,11 +114,16 @@ impl<'a> Context<'a> {
     ///
     /// I found myself doing a clone-then-set-position operation a bunch, so
     /// this simplifies it.
-    pub fn clone_to(&self, new_position: u64) -> Self {
+    pub fn at(&self, new_position: u64) -> Self {
         let mut c = self.clone();
         c.c.set_position(new_position);
 
         c
+    }
+
+    /// Get the current position.
+    pub fn position(&self) -> u64 {
+        self.c.position()
     }
 }
 
