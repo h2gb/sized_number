@@ -28,7 +28,7 @@
 //! use sized_number::*;
 //!
 //! let buffer = b"ABCD".to_vec();
-//! let context = new_context(&buffer, 0);
+//! let context = Context::new_at(&buffer, 0);
 //! let d = SizedDefinition::U32(Endian::Big);
 //!
 //! assert_eq!("0x41424344", d.to_string(&context, SizedDisplay::Hex(HexOptions::default())).unwrap());
@@ -48,10 +48,10 @@
 //! integers:
 //!
 //! ```
-//! use sized_number::{new_context, SizedDefinition, Endian, SizedDisplay, HexOptions, BinaryOptions, ScientificOptions};
+//! use sized_number::{Context, SizedDefinition, Endian, SizedDisplay, HexOptions, BinaryOptions, ScientificOptions};
 //!
 //! let buffer = b"\x01\x02\x03\x04\x05\x06\x07\x08".to_vec();
-//! let context = new_context(&buffer, 0);
+//! let context = Context::new_at(&buffer, 0);
 //! let d = SizedDefinition::U32(Endian::Big);
 //!
 //! assert_eq!(0x01,               SizedDefinition::U8.to_u64(&context).unwrap());
@@ -63,26 +63,66 @@
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use simple_error::{SimpleResult, bail};
 use std::fmt::{LowerHex, LowerExp, Octal, Binary, Display};
-use std::io;
+use std::io::{self, Cursor};
 use std::mem;
 
 #[cfg(feature = "serialize")]
 use serde::{Serialize, Deserialize};
 
-pub type Context<'a> = std::io::Cursor<&'a Vec<u8>>;
-
-/// Create a new context from a [`u8`] vector and an offset.
+/// A structure to hold a data structure and a position while reading the data.
 ///
-/// No error checking is done, and this can't fail. But if the context is
-/// too high, all reads will fail.
-pub fn new_context(v: &Vec<u8>, offset: u64) -> Context {
-    let mut c = Context::new(v);
-    c.set_position(offset);
-
-    c
+/// This is essentially a [`Cursor`], but with some convenience functions to
+/// clone and set the position more quickly.
+#[derive(Debug, Clone)]
+pub struct Context<'a> {
+    c: Cursor<&'a Vec<u8>>,
 }
 
-/// Configure display options for `SizedDisplay::Scientific`
+impl<'a> Context<'a> {
+    /// Create a new [`Context`] at position 0.
+    ///
+    /// Cannot fail, even if the Vec is empty.
+    pub fn new(v: &'a Vec<u8>) -> Self {
+        Self {
+            c: Cursor::new(v)
+        }
+    }
+
+    /// Create a new [`Context`] at a given position.
+    ///
+    /// Cannot fail, even if the Vec is empty or if the index is crazy. Those
+    /// are checked when using the cursor, not while creating it.
+    pub fn new_at(v: &'a Vec<u8>, index: u64) -> Self {
+        let mut c = Cursor::new(v);
+        c.set_position(index);
+
+        Self {
+            c: c
+        }
+    }
+
+    /// Return a clone of the Cursor.
+    ///
+    /// This is for internal use only. We clone a lot while reading values, but
+    /// this operation is reasonably inexpensive since we don't actually clone
+    /// the data - just a reference.
+    fn cursor(&self) -> Cursor<&Vec<u8>> {
+        self.c.clone()
+    }
+
+    /// Clone the [`Context`] and change the position at the same time.
+    ///
+    /// I found myself doing a clone-then-set-position operation a bunch, so
+    /// this simplifies it.
+    pub fn clone_to(&self, new_position: u64) -> Self {
+        let mut c = self.clone();
+        c.c.set_position(new_position);
+
+        c
+    }
+}
+
+/// Configure display options for [`SizedDisplay::Scientific`]
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct ScientificOptions {
@@ -190,7 +230,7 @@ pub enum SizedDisplay {
     /// use sized_number::*;
     ///
     /// let buffer = b"\x00\xab".to_vec();
-    /// let context = new_context(&buffer, 0);
+    /// let context = Context::new_at(&buffer, 0);
     /// let d = SizedDefinition::U16(Endian::Big);
     ///
     /// assert_eq!("0x00ab", d.to_string(&context, SizedDisplay::Hex(HexOptions::default())).unwrap());
@@ -218,7 +258,7 @@ pub enum SizedDisplay {
     /// use sized_number::*;
     ///
     /// let buffer = b"\xFF\xFF".to_vec();
-    /// let context = new_context(&buffer, 0);
+    /// let context = Context::new_at(&buffer, 0);
     ///
     /// assert_eq!("255", SizedDefinition::U8.to_string(&context, SizedDisplay::Decimal).unwrap());
     /// assert_eq!("-1", SizedDefinition::I8.to_string(&context, SizedDisplay::Decimal).unwrap());
@@ -233,7 +273,7 @@ pub enum SizedDisplay {
     /// use sized_number::*;
     ///
     /// let buffer = b"\x20".to_vec();
-    /// let context = new_context(&buffer, 0);
+    /// let context = Context::new_at(&buffer, 0);
     ///
     /// assert_eq!("0o40", SizedDefinition::U8.to_string(&context, SizedDisplay::Octal(Default::default())).unwrap());
     ///
@@ -247,7 +287,7 @@ pub enum SizedDisplay {
     /// use sized_number::*;
     ///
     /// let buffer = b"\x01".to_vec();
-    /// let context = new_context(&buffer, 0);
+    /// let context = Context::new_at(&buffer, 0);
     ///
     /// assert_eq!("0b00000001", SizedDefinition::U8.to_string(&context, SizedDisplay::Binary(Default::default())).unwrap());
     /// ```
@@ -261,7 +301,7 @@ pub enum SizedDisplay {
     /// use sized_number::*;
     ///
     /// let buffer = b"\x64".to_vec();
-    /// let context = new_context(&buffer, 0);
+    /// let context = Context::new_at(&buffer, 0);
     ///
     /// assert_eq!("1e2", SizedDefinition::U8.to_string(&context, SizedDisplay::Scientific(Default::default())).unwrap());
     /// ```
@@ -467,7 +507,7 @@ impl SizedDefinition {
     fn to_string_internal(self, context: &Context, display: SizedDisplay) -> io::Result<String> {
         match self {
             Self::U8 => {
-                let v = Box::new(context.clone().read_u8()?);
+                let v = Box::new(context.cursor().read_u8()?);
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
@@ -479,8 +519,8 @@ impl SizedDefinition {
 
             Self::U16(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_u16::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_u16::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_u16::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_u16::<LittleEndian>()?),
                 };
 
                 match display {
@@ -494,8 +534,8 @@ impl SizedDefinition {
 
             Self::U32(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_u32::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_u32::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_u32::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_u32::<LittleEndian>()?),
                 };
 
                 match display {
@@ -509,8 +549,8 @@ impl SizedDefinition {
 
             Self::U64(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_u64::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_u64::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_u64::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_u64::<LittleEndian>()?),
                 };
 
                 match display {
@@ -524,8 +564,8 @@ impl SizedDefinition {
 
             Self::U128(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_u128::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_u128::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_u128::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_u128::<LittleEndian>()?),
                 };
 
                 match display {
@@ -538,7 +578,7 @@ impl SizedDefinition {
             },
 
             Self::I8 => {
-                let v = Box::new(context.clone().read_i8()?);
+                let v = Box::new(context.cursor().read_i8()?);
 
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
@@ -551,8 +591,8 @@ impl SizedDefinition {
 
             Self::I16(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_i16::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_i16::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_i16::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_i16::<LittleEndian>()?),
                 };
 
                 match display {
@@ -566,8 +606,8 @@ impl SizedDefinition {
 
             Self::I32(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_i32::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_i32::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_i32::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_i32::<LittleEndian>()?),
                 };
 
                 match display {
@@ -581,8 +621,8 @@ impl SizedDefinition {
 
             Self::I64(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_i64::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_i64::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_i64::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_i64::<LittleEndian>()?),
                 };
 
                 match display {
@@ -596,8 +636,8 @@ impl SizedDefinition {
 
             Self::I128(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_i128::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_i128::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_i128::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_i128::<LittleEndian>()?),
                 };
 
                 match display {
@@ -611,8 +651,8 @@ impl SizedDefinition {
 
             Self::F32(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_f32::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_f32::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_f32::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_f32::<LittleEndian>()?),
                 };
 
                 match display {
@@ -626,8 +666,8 @@ impl SizedDefinition {
 
             Self::F64(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.clone().read_f64::<BigEndian>()?),
-                    Endian::Little => Box::new(context.clone().read_f64::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.cursor().read_f64::<BigEndian>()?),
+                    Endian::Little => Box::new(context.cursor().read_f64::<LittleEndian>()?),
                 };
 
                 match display {
@@ -698,15 +738,15 @@ impl SizedDefinition {
     pub fn to_u64(self, context: &Context) -> SimpleResult<u64> {
         match self {
             Self::U8 => {
-                match context.clone().read_u8() {
+                match context.cursor().read_u8() {
                     Ok(v)  => Ok(v as u64),
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
             Self::U16(endian) => {
                 let v = match endian {
-                    Endian::Big => context.clone().read_u16::<BigEndian>(),
-                    Endian::Little => context.clone().read_u16::<LittleEndian>(),
+                    Endian::Big => context.cursor().read_u16::<BigEndian>(),
+                    Endian::Little => context.cursor().read_u16::<LittleEndian>(),
                 };
 
                 match v {
@@ -716,8 +756,8 @@ impl SizedDefinition {
             },
             Self::U32(endian) => {
                 let v = match endian {
-                    Endian::Big => context.clone().read_u32::<BigEndian>(),
-                    Endian::Little => context.clone().read_u32::<LittleEndian>(),
+                    Endian::Big => context.cursor().read_u32::<BigEndian>(),
+                    Endian::Little => context.cursor().read_u32::<LittleEndian>(),
                 };
 
                 match v {
@@ -727,8 +767,8 @@ impl SizedDefinition {
             },
             Self::U64(endian) => {
                 let v = match endian {
-                    Endian::Big => context.clone().read_u64::<BigEndian>(),
-                    Endian::Little => context.clone().read_u64::<LittleEndian>(),
+                    Endian::Big => context.cursor().read_u64::<BigEndian>(),
+                    Endian::Little => context.cursor().read_u64::<LittleEndian>(),
                 };
 
                 match v {
@@ -770,15 +810,15 @@ impl SizedDefinition {
             Self::U128(_) => bail!("Can't convert i128 (signed) into i64"),
 
             Self::I8 => {
-                match context.clone().read_i8() {
+                match context.cursor().read_i8() {
                     Ok(v) => Ok(v as i64),
                     Err(e) => bail!("Failed to read data: {}", e),
                 }
             },
             Self::I16(endian) => {
                 let v = match endian {
-                    Endian::Big => context.clone().read_i16::<BigEndian>(),
-                    Endian::Little => context.clone().read_i16::<LittleEndian>(),
+                    Endian::Big => context.cursor().read_i16::<BigEndian>(),
+                    Endian::Little => context.cursor().read_i16::<LittleEndian>(),
                 };
 
                 match v {
@@ -788,8 +828,8 @@ impl SizedDefinition {
             },
             Self::I32(endian) => {
                 let v = match endian {
-                    Endian::Big => context.clone().read_i32::<BigEndian>(),
-                    Endian::Little => context.clone().read_i32::<LittleEndian>(),
+                    Endian::Big => context.cursor().read_i32::<BigEndian>(),
+                    Endian::Little => context.cursor().read_i32::<LittleEndian>(),
                 };
 
                 match v {
@@ -799,8 +839,8 @@ impl SizedDefinition {
             },
             Self::I64(endian) => {
                 let v = match endian {
-                    Endian::Big => context.clone().read_i64::<BigEndian>(),
-                    Endian::Little => context.clone().read_i64::<LittleEndian>(),
+                    Endian::Big => context.cursor().read_i64::<BigEndian>(),
+                    Endian::Little => context.cursor().read_i64::<LittleEndian>(),
                 };
 
                 match v {
@@ -863,7 +903,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -909,7 +949,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -948,7 +988,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -980,7 +1020,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1012,7 +1052,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1051,7 +1091,7 @@ mod tests {
         ];
 
         for (index, uppercase, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1082,7 +1122,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1109,7 +1149,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1136,7 +1176,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1163,7 +1203,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1190,7 +1230,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1217,7 +1257,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1242,7 +1282,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1267,7 +1307,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1312,7 +1352,7 @@ mod tests {
         ];
 
         for (index, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1356,7 +1396,7 @@ mod tests {
         ];
 
         for (index, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1400,7 +1440,7 @@ mod tests {
         ];
 
         for (index, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1441,7 +1481,7 @@ mod tests {
         ];
 
         for (index, prefix, padded, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1480,7 +1520,7 @@ mod tests {
         ];
 
         for (index, padded, prefix, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1514,7 +1554,7 @@ mod tests {
         ];
 
         for (index, uppercase, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1547,7 +1587,7 @@ mod tests {
         ];
 
         for (index, uppercase, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1576,7 +1616,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1602,7 +1642,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1628,7 +1668,7 @@ mod tests {
         ];
 
         for (index, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1656,7 +1696,7 @@ mod tests {
         ];
 
         for (index, uppercase, expected) in tests {
-            let context = new_context(&data, index);
+            let context = Context::new_at(&data, index);
 
             assert_eq!(
                 expected,
@@ -1696,22 +1736,22 @@ mod tests {
     fn test_to_u64() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF\x00\x01\x02\x03".to_vec();
 
-        assert_eq!(0u64,   SizedDefinition::U8.to_u64(&new_context(&data, 0))?);
-        assert_eq!(127u64, SizedDefinition::U8.to_u64(&new_context(&data, 1))?);
-        assert_eq!(128u64, SizedDefinition::U8.to_u64(&new_context(&data, 2))?);
-        assert_eq!(255u64, SizedDefinition::U8.to_u64(&new_context(&data, 3))?);
+        assert_eq!(0u64,   SizedDefinition::U8.to_u64(&Context::new_at(&data, 0))?);
+        assert_eq!(127u64, SizedDefinition::U8.to_u64(&Context::new_at(&data, 1))?);
+        assert_eq!(128u64, SizedDefinition::U8.to_u64(&Context::new_at(&data, 2))?);
+        assert_eq!(255u64, SizedDefinition::U8.to_u64(&Context::new_at(&data, 3))?);
 
-        assert_eq!(127u64,               SizedDefinition::U16(Endian::Big).to_u64(&new_context(&data, 0))?);
-        assert_eq!(8356095u64,           SizedDefinition::U32(Endian::Big).to_u64(&new_context(&data, 0))?);
-        assert_eq!(35889154747335171u64, SizedDefinition::U64(Endian::Big).to_u64(&new_context(&data, 0))?);
+        assert_eq!(127u64,               SizedDefinition::U16(Endian::Big).to_u64(&Context::new_at(&data, 0))?);
+        assert_eq!(8356095u64,           SizedDefinition::U32(Endian::Big).to_u64(&Context::new_at(&data, 0))?);
+        assert_eq!(35889154747335171u64, SizedDefinition::U64(Endian::Big).to_u64(&Context::new_at(&data, 0))?);
 
-        assert!(SizedDefinition::U128(Endian::Big).to_u64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::I8.to_u64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::I16(Endian::Big).to_u64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::I32(Endian::Big).to_u64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::I64(Endian::Big).to_u64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::F32(Endian::Big).to_u64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::F64(Endian::Big).to_u64(&new_context(&data, 0)).is_err());
+        assert!(SizedDefinition::U128(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I8.to_u64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I16(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I32(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I64(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::F32(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::F64(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
 
         Ok(())
     }
@@ -1720,27 +1760,27 @@ mod tests {
     fn test_to_i64() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF\x00\x01\x02\x03\x80\x00\x00\x00\x00\x00\x00\x00".to_vec();
 
-        assert_eq!(0i64,                    SizedDefinition::I8.to_i64(&new_context(&data, 0))?);
-        assert_eq!(127i64,                  SizedDefinition::I8.to_i64(&new_context(&data, 1))?);
-        assert_eq!(-128i64,                 SizedDefinition::I8.to_i64(&new_context(&data, 2))?);
-        assert_eq!(-1i64,                   SizedDefinition::I8.to_i64(&new_context(&data, 3))?);
+        assert_eq!(0i64,                    SizedDefinition::I8.to_i64(&Context::new_at(&data, 0))?);
+        assert_eq!(127i64,                  SizedDefinition::I8.to_i64(&Context::new_at(&data, 1))?);
+        assert_eq!(-128i64,                 SizedDefinition::I8.to_i64(&Context::new_at(&data, 2))?);
+        assert_eq!(-1i64,                   SizedDefinition::I8.to_i64(&Context::new_at(&data, 3))?);
 
-        assert_eq!(127i64,                  SizedDefinition::I16(Endian::Big).to_i64(&new_context(&data, 0))?);
-        assert_eq!(-32768i64,               SizedDefinition::I16(Endian::Big).to_i64(&new_context(&data, 8))?);
+        assert_eq!(127i64,                  SizedDefinition::I16(Endian::Big).to_i64(&Context::new_at(&data, 0))?);
+        assert_eq!(-32768i64,               SizedDefinition::I16(Endian::Big).to_i64(&Context::new_at(&data, 8))?);
 
-        assert_eq!(8356095i64,              SizedDefinition::I32(Endian::Big).to_i64(&new_context(&data, 0))?);
-        assert_eq!(-2147483648i64,          SizedDefinition::I32(Endian::Big).to_i64(&new_context(&data, 8))?);
+        assert_eq!(8356095i64,              SizedDefinition::I32(Endian::Big).to_i64(&Context::new_at(&data, 0))?);
+        assert_eq!(-2147483648i64,          SizedDefinition::I32(Endian::Big).to_i64(&Context::new_at(&data, 8))?);
 
-        assert_eq!(35889154747335171i64,    SizedDefinition::I64(Endian::Big).to_i64(&new_context(&data, 0))?);
-        assert_eq!(-9223372036854775808i64, SizedDefinition::I64(Endian::Big).to_i64(&new_context(&data, 8))?);
+        assert_eq!(35889154747335171i64,    SizedDefinition::I64(Endian::Big).to_i64(&Context::new_at(&data, 0))?);
+        assert_eq!(-9223372036854775808i64, SizedDefinition::I64(Endian::Big).to_i64(&Context::new_at(&data, 8))?);
 
-        assert!(SizedDefinition::I128(Endian::Big).to_i64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::U8.to_i64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::U16(Endian::Big).to_i64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::U32(Endian::Big).to_i64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::U64(Endian::Big).to_i64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::F32(Endian::Big).to_i64(&new_context(&data, 0)).is_err());
-        assert!(SizedDefinition::F64(Endian::Big).to_i64(&new_context(&data, 0)).is_err());
+        assert!(SizedDefinition::I128(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U8.to_i64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U16(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U32(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U64(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::F32(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::F64(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
 
         Ok(())
     }
