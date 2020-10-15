@@ -60,72 +60,15 @@
 //! assert_eq!(0x0102030405060708, SizedDefinition::U64(Endian::Big).to_u64(&context).unwrap());
 //! ```
 
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use simple_error::{SimpleResult, bail};
 use std::fmt::{LowerHex, LowerExp, Octal, Binary, Display};
-use std::io::{self, Cursor};
 use std::mem;
 
 #[cfg(feature = "serialize")]
 use serde::{Serialize, Deserialize};
 
-/// A structure to hold a data structure and a position while reading the data.
-///
-/// This is essentially a [`Cursor`], but with some convenience functions to
-/// clone and set the position more quickly.
-#[derive(Debug, Clone)]
-pub struct Context<'a> {
-    c: Cursor<&'a Vec<u8>>,
-}
-
-impl<'a> Context<'a> {
-    /// Create a new [`Context`] at position 0.
-    ///
-    /// Cannot fail, even if the Vec is empty.
-    pub fn new(v: &'a Vec<u8>) -> Self {
-        Self {
-            c: Cursor::new(v)
-        }
-    }
-
-    /// Create a new [`Context`] at a given position.
-    ///
-    /// Cannot fail, even if the Vec is empty or if the index is crazy. Those
-    /// are checked when using the cursor, not while creating it.
-    pub fn new_at(v: &'a Vec<u8>, index: u64) -> Self {
-        let mut c = Cursor::new(v);
-        c.set_position(index);
-
-        Self {
-            c: c
-        }
-    }
-
-    /// Return a clone of the Cursor.
-    ///
-    /// This is for internal use only. We clone a lot while reading values, but
-    /// this operation is reasonably inexpensive since we don't actually clone
-    /// the data - just a reference.
-    fn cursor(&self) -> Cursor<&Vec<u8>> {
-        self.c.clone()
-    }
-
-    /// Clone the [`Context`] and change the position at the same time.
-    ///
-    /// I found myself doing a clone-then-set-position operation a bunch, so
-    /// this simplifies it.
-    pub fn at(&self, new_position: u64) -> Self {
-        let mut c = self.clone();
-        c.c.set_position(new_position);
-
-        c
-    }
-
-    /// Get the current position.
-    pub fn position(&self) -> u64 {
-        self.c.position()
-    }
-}
+pub mod context;
+pub use context::{Context, Endian};
 
 /// Configure display options for [`SizedDisplay::Scientific`]
 #[derive(Debug, Clone, Copy)]
@@ -206,17 +149,6 @@ impl Default for BinaryOptions {
             prefix: true,
         }
     }
-}
-
-/// Define the endianness for reading multi-byte integers
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub enum Endian {
-    /// Most significant byte is first (eg, `0x1234` -> `12 34`)
-    Big,
-
-    /// Most significant byte is last (eg, `0x1234` -> `34 12`)
-    Little,
 }
 
 /// Display options with their associated configurations.
@@ -501,18 +433,12 @@ impl SizedDefinition {
         }
     }
 
-    /// Implement this as an internal function, because we want to map the
-    /// error to our own error type, and this got really, really, really long.
-    ///
-    /// Unfortunately, there isn't a great way (that I know of) to work with
-    /// differently-sized basic types, traits just don't have enough power, so
-    /// there is a lot of repeated code here.
-    ///
-    /// It might be fun to look into macros some day.
-    fn to_string_internal(self, context: &Context, display: SizedDisplay) -> io::Result<String> {
+    /// Read data from the context, based on the [`SizedDefinition`], and
+    /// display it based on the `SizedDisplay`
+    pub fn to_string(self, context: &Context, display: SizedDisplay) -> SimpleResult<String> {
         match self {
             Self::U8 => {
-                let v = Box::new(context.cursor().read_u8()?);
+                let v = Box::new(context.read_u8()?);
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
@@ -524,8 +450,8 @@ impl SizedDefinition {
 
             Self::U16(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_u16::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_u16::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_u16(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_u16(Endian::Little)?),
                 };
 
                 match display {
@@ -539,8 +465,8 @@ impl SizedDefinition {
 
             Self::U32(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_u32::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_u32::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_u32(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_u32(Endian::Little)?),
                 };
 
                 match display {
@@ -554,8 +480,8 @@ impl SizedDefinition {
 
             Self::U64(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_u64::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_u64::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_u64(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_u64(Endian::Little)?),
                 };
 
                 match display {
@@ -569,8 +495,8 @@ impl SizedDefinition {
 
             Self::U128(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_u128::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_u128::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_u128(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_u128(Endian::Little)?),
                 };
 
                 match display {
@@ -583,7 +509,7 @@ impl SizedDefinition {
             },
 
             Self::I8 => {
-                let v = Box::new(context.cursor().read_i8()?);
+                let v = Box::new(context.read_i8()?);
 
                 match display {
                     SizedDisplay::Hex(options)        => Ok(display_hex(v, options)),
@@ -596,8 +522,8 @@ impl SizedDefinition {
 
             Self::I16(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_i16::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_i16::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_i16(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_i16(Endian::Little)?),
                 };
 
                 match display {
@@ -611,8 +537,8 @@ impl SizedDefinition {
 
             Self::I32(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_i32::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_i32::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_i32(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_i32(Endian::Little)?),
                 };
 
                 match display {
@@ -626,8 +552,8 @@ impl SizedDefinition {
 
             Self::I64(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_i64::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_i64::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_i64(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_i64(Endian::Little)?),
                 };
 
                 match display {
@@ -641,8 +567,8 @@ impl SizedDefinition {
 
             Self::I128(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_i128::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_i128::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_i128(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_i128(Endian::Little)?),
                 };
 
                 match display {
@@ -656,42 +582,33 @@ impl SizedDefinition {
 
             Self::F32(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_f32::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_f32::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_f32(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_f32(Endian::Little)?),
                 };
 
                 match display {
-                    SizedDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
+                    SizedDisplay::Hex(_)              => bail!("Floats can't be displayed as hex"),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal(_)            => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
-                    SizedDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
+                    SizedDisplay::Octal(_)            => bail!("Floats can't be displayed as octal"),
+                    SizedDisplay::Binary(_)           => bail!("Floats can't be displayed as binary"),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
 
             Self::F64(endian) => {
                 let v = match endian {
-                    Endian::Big => Box::new(context.cursor().read_f64::<BigEndian>()?),
-                    Endian::Little => Box::new(context.cursor().read_f64::<LittleEndian>()?),
+                    Endian::Big => Box::new(context.read_f64(Endian::Big)?),
+                    Endian::Little => Box::new(context.read_f64(Endian::Little)?),
                 };
 
                 match display {
-                    SizedDisplay::Hex(_)              => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as hex")),
+                    SizedDisplay::Hex(_)              => bail!("Floats can't be displayed as hex"),
                     SizedDisplay::Decimal             => Ok(display_decimal(v)),
-                    SizedDisplay::Octal(_)            => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as octal")),
-                    SizedDisplay::Binary(_)           => Err(io::Error::new(io::ErrorKind::Other, "Floats can't be displayed as binary")),
+                    SizedDisplay::Octal(_)            => bail!("Floats can't be displayed as octal"),
+                    SizedDisplay::Binary(_)           => bail!("Floats can't be displayed as binary"),
                     SizedDisplay::Scientific(options) => Ok(display_scientific(v, options)),
                 }
             },
-        }
-    }
-
-    /// Read data from the context, based on the [`SizedDefinition`], and
-    /// display it based on the `SizedDisplay`
-    pub fn to_string(self, context: &Context, display: SizedDisplay) -> SimpleResult<String> {
-        match self.to_string_internal(context, display) {
-            Ok(s) => Ok(s),
-            Err(e) => bail!("Couldn't convert to string: {}", e),
         }
     }
 
@@ -742,45 +659,10 @@ impl SizedDefinition {
     /// unsigned.
     pub fn to_u64(self, context: &Context) -> SimpleResult<u64> {
         match self {
-            Self::U8 => {
-                match context.cursor().read_u8() {
-                    Ok(v)  => Ok(v as u64),
-                    Err(e) => bail!("Failed to read data: {}", e),
-                }
-            },
-            Self::U16(endian) => {
-                let v = match endian {
-                    Endian::Big => context.cursor().read_u16::<BigEndian>(),
-                    Endian::Little => context.cursor().read_u16::<LittleEndian>(),
-                };
-
-                match v {
-                    Ok(v)  => Ok(v as u64),
-                    Err(e) => bail!("Failed to read data: {}", e),
-                }
-            },
-            Self::U32(endian) => {
-                let v = match endian {
-                    Endian::Big => context.cursor().read_u32::<BigEndian>(),
-                    Endian::Little => context.cursor().read_u32::<LittleEndian>(),
-                };
-
-                match v {
-                    Ok(v)  => Ok(v as u64),
-                    Err(e) => bail!("Failed to read data: {}", e),
-                }
-            },
-            Self::U64(endian) => {
-                let v = match endian {
-                    Endian::Big => context.cursor().read_u64::<BigEndian>(),
-                    Endian::Little => context.cursor().read_u64::<LittleEndian>(),
-                };
-
-                match v {
-                    Ok(v)  => Ok(v as u64),
-                    Err(e) => bail!("Failed to read data: {}", e),
-                }
-            },
+            Self::U8          => Ok(context.read_u8()? as u64),
+            Self::U16(endian) => Ok(context.read_u16(endian)? as u64),
+            Self::U32(endian) => Ok(context.read_u32(endian)? as u64),
+            Self::U64(endian) => Ok(context.read_u64(endian)? as u64),
 
             // None of these can become u32
             Self::U128(_) => bail!("Can't convert u128 into u64"),
@@ -814,46 +696,10 @@ impl SizedDefinition {
             Self::U64(_)  => bail!("Can't convert i64 (signed) into i64"),
             Self::U128(_) => bail!("Can't convert i128 (signed) into i64"),
 
-            Self::I8 => {
-                match context.cursor().read_i8() {
-                    Ok(v) => Ok(v as i64),
-                    Err(e) => bail!("Failed to read data: {}", e),
-                }
-            },
-            Self::I16(endian) => {
-                let v = match endian {
-                    Endian::Big => context.cursor().read_i16::<BigEndian>(),
-                    Endian::Little => context.cursor().read_i16::<LittleEndian>(),
-                };
-
-                match v {
-                    Ok(v) => Ok(v as i64),
-                    Err(e) => bail!("Failed to read data: {}", e),
-                }
-            },
-            Self::I32(endian) => {
-                let v = match endian {
-                    Endian::Big => context.cursor().read_i32::<BigEndian>(),
-                    Endian::Little => context.cursor().read_i32::<LittleEndian>(),
-                };
-
-                match v {
-                    Ok(v) => Ok(v as i64),
-                    Err(e) => bail!("Failed to read data: {}", e),
-                }
-            },
-            Self::I64(endian) => {
-                let v = match endian {
-                    Endian::Big => context.cursor().read_i64::<BigEndian>(),
-                    Endian::Little => context.cursor().read_i64::<LittleEndian>(),
-                };
-
-                match v {
-                    Ok(v) => Ok(v as i64),
-                    Err(e) => bail!("Failed to read data: {}", e),
-                }
-            },
-
+            Self::I8 =>          Ok(context.read_i8()? as i64),
+            Self::I16(endian) => Ok(context.read_i16(endian)? as i64),
+            Self::I32(endian) => Ok(context.read_i32(endian)? as i64),
+            Self::I64(endian) => Ok(context.read_i64(endian)? as i64),
 
             // 128 bit can't go into 64 bit
             Self::I128(_) => bail!("Can't convert u128 into i64"),
