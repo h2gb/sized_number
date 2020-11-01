@@ -31,11 +31,11 @@
 //! let context = Context::new_at(&buffer, 0);
 //! let d = SizedDefinition::U32(Endian::Big);
 //!
-//! assert_eq!("0x41424344", d.to_string(&context, SizedDisplay::Hex(HexOptions::default())).unwrap());
-//! assert_eq!("1094861636", d.to_string(&context, SizedDisplay::Decimal).unwrap());
-//! assert_eq!("0o10120441504", d.to_string(&context, SizedDisplay::Octal(Default::default())).unwrap());
-//! assert_eq!("0b01000001010000100100001101000100", d.to_string(&context, SizedDisplay::Binary(Default::default())).unwrap());
-//! assert_eq!("1.094861636e9", d.to_string(&context, SizedDisplay::Scientific(Default::default())).unwrap());
+//! assert_eq!("0x41424344", d.to_string(context, SizedDisplay::Hex(HexOptions::default())).unwrap());
+//! assert_eq!("1094861636", d.to_string(context, SizedDisplay::Decimal).unwrap());
+//! assert_eq!("0o10120441504", d.to_string(context, SizedDisplay::Octal(Default::default())).unwrap());
+//! assert_eq!("0b01000001010000100100001101000100", d.to_string(context, SizedDisplay::Binary(Default::default())).unwrap());
+//! assert_eq!("1.094861636e9", d.to_string(context, SizedDisplay::Scientific(Default::default())).unwrap());
 //! ```
 //!
 //! The string conversion is designed to be "stamp"-able - you can define the
@@ -54,10 +54,10 @@
 //! let context = Context::new_at(&buffer, 0);
 //! let d = SizedDefinition::U32(Endian::Big);
 //!
-//! assert_eq!(0x01,               SizedDefinition::U8.to_u64(&context).unwrap());
-//! assert_eq!(0x0102,             SizedDefinition::U16(Endian::Big).to_u64(&context).unwrap());
-//! assert_eq!(0x01020304,         SizedDefinition::U32(Endian::Big).to_u64(&context).unwrap());
-//! assert_eq!(0x0102030405060708, SizedDefinition::U64(Endian::Big).to_u64(&context).unwrap());
+//! assert_eq!(0x01,               SizedDefinition::U8.to_u64(context).unwrap());
+//! assert_eq!(0x0102,             SizedDefinition::U16(Endian::Big).to_u64(context).unwrap());
+//! assert_eq!(0x01020304,         SizedDefinition::U32(Endian::Big).to_u64(context).unwrap());
+//! assert_eq!(0x0102030405060708, SizedDefinition::U64(Endian::Big).to_u64(context).unwrap());
 //! ```
 
 use simple_error::{SimpleResult, bail};
@@ -170,15 +170,15 @@ pub enum SizedDisplay {
     /// let context = Context::new_at(&buffer, 0);
     /// let d = SizedDefinition::U16(Endian::Big);
     ///
-    /// assert_eq!("0x00ab", d.to_string(&context, SizedDisplay::Hex(HexOptions::default())).unwrap());
+    /// assert_eq!("0x00ab", d.to_string(context, SizedDisplay::Hex(HexOptions::default())).unwrap());
     ///
-    /// assert_eq!("00AB", d.to_string(&context, SizedDisplay::Hex(HexOptions {
+    /// assert_eq!("00AB", d.to_string(context, SizedDisplay::Hex(HexOptions {
     ///     uppercase: true,
     ///     prefix: false,
     ///     padded: true,
     /// })).unwrap());
     ///
-    /// assert_eq!("0xab", d.to_string(&context, SizedDisplay::Hex(HexOptions {
+    /// assert_eq!("0xab", d.to_string(context, SizedDisplay::Hex(HexOptions {
     ///     uppercase: false,
     ///     prefix: true,
     ///     padded: false,
@@ -197,8 +197,8 @@ pub enum SizedDisplay {
     /// let buffer = b"\xFF\xFF".to_vec();
     /// let context = Context::new_at(&buffer, 0);
     ///
-    /// assert_eq!("255", SizedDefinition::U8.to_string(&context, SizedDisplay::Decimal).unwrap());
-    /// assert_eq!("-1", SizedDefinition::I8.to_string(&context, SizedDisplay::Decimal).unwrap());
+    /// assert_eq!("255", SizedDefinition::U8.to_string(context, SizedDisplay::Decimal).unwrap());
+    /// assert_eq!("-1", SizedDefinition::I8.to_string(context, SizedDisplay::Decimal).unwrap());
     ///
     /// ```
     Decimal,
@@ -212,7 +212,7 @@ pub enum SizedDisplay {
     /// let buffer = b"\x20".to_vec();
     /// let context = Context::new_at(&buffer, 0);
     ///
-    /// assert_eq!("0o40", SizedDefinition::U8.to_string(&context, SizedDisplay::Octal(Default::default())).unwrap());
+    /// assert_eq!("0o40", SizedDefinition::U8.to_string(context, SizedDisplay::Octal(Default::default())).unwrap());
     ///
     /// ```
     Octal(OctalOptions),
@@ -226,7 +226,7 @@ pub enum SizedDisplay {
     /// let buffer = b"\x01".to_vec();
     /// let context = Context::new_at(&buffer, 0);
     ///
-    /// assert_eq!("0b00000001", SizedDefinition::U8.to_string(&context, SizedDisplay::Binary(Default::default())).unwrap());
+    /// assert_eq!("0b00000001", SizedDefinition::U8.to_string(context, SizedDisplay::Binary(Default::default())).unwrap());
     /// ```
     Binary(BinaryOptions),
 
@@ -240,7 +240,7 @@ pub enum SizedDisplay {
     /// let buffer = b"\x64".to_vec();
     /// let context = Context::new_at(&buffer, 0);
     ///
-    /// assert_eq!("1e2", SizedDefinition::U8.to_string(&context, SizedDisplay::Scientific(Default::default())).unwrap());
+    /// assert_eq!("1e2", SizedDefinition::U8.to_string(context, SizedDisplay::Scientific(Default::default())).unwrap());
     /// ```
     Scientific(ScientificOptions),
 }
@@ -435,7 +435,7 @@ impl SizedDefinition {
 
     /// Read data from the context, based on the [`SizedDefinition`], and
     /// display it based on the `SizedDisplay`
-    pub fn to_string(self, context: &Context, display: SizedDisplay) -> SimpleResult<String> {
+    pub fn to_string(self, context: Context, display: SizedDisplay) -> SimpleResult<String> {
         match self {
             Self::U8 => {
                 let v = Box::new(context.read_u8()?);
@@ -657,7 +657,7 @@ impl SizedDefinition {
     /// Only unsigned values of 64-bits or less can be converted to a [`u64`].
     /// Everything else will return an error - we don't typecast signed to
     /// unsigned.
-    pub fn to_u64(self, context: &Context) -> SimpleResult<u64> {
+    pub fn to_u64(self, context: Context) -> SimpleResult<u64> {
         match self {
             Self::U8          => Ok(context.read_u8()? as u64),
             Self::U16(endian) => Ok(context.read_u16(endian)? as u64),
@@ -687,7 +687,7 @@ impl SizedDefinition {
     /// Only signed values of 64-bits or less can be converted to an [`i64`].
     /// Everything else will return an error - we don't typecast unsigned to
     /// signed.
-    pub fn to_i64(self, context: &Context) -> SimpleResult<i64> {
+    pub fn to_i64(self, context: Context) -> SimpleResult<i64> {
         match self {
             // Don't let unsigned values become signed
             Self::U8      => bail!("Can't convert i8 (signed) into i64"),
@@ -759,7 +759,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U8.to_string(
-                    &context,
+                    context,
                     SizedDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
@@ -805,7 +805,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U16(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
@@ -844,7 +844,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U32(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
@@ -876,7 +876,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U64(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
@@ -908,7 +908,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U64(Endian::Little).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
@@ -947,7 +947,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U128(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Hex(HexOptions {
                         uppercase: uppercase,
                         prefix: prefix,
@@ -978,7 +978,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U8.to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1005,7 +1005,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::I8.to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1032,7 +1032,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U16(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1059,7 +1059,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U32(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1086,7 +1086,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::I32(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1113,7 +1113,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::I64(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1138,7 +1138,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U128(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1163,7 +1163,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::I128(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1208,7 +1208,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U8.to_string(
-                    &context,
+                    context,
                     SizedDisplay::Octal(OctalOptions {
                         prefix: prefix,
                         padded: padded,
@@ -1252,7 +1252,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U16(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Octal(OctalOptions {
                         prefix: prefix,
                         padded: padded,
@@ -1296,7 +1296,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U32(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Octal(OctalOptions {
                         prefix: prefix,
                         padded: padded,
@@ -1337,7 +1337,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U64(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Octal(OctalOptions {
                         prefix: prefix,
                         padded: padded,
@@ -1376,7 +1376,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U8.to_string(
-                    &context,
+                    context,
                     SizedDisplay::Binary(BinaryOptions {
                         prefix: prefix,
                         padded: padded,
@@ -1410,7 +1410,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::U32(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
                     })
@@ -1443,7 +1443,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::I32(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
                     })
@@ -1472,7 +1472,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::F32(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1498,7 +1498,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::F64(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1524,7 +1524,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::F64(Endian::Little).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Decimal
                 )?
             );
@@ -1552,7 +1552,7 @@ mod tests {
             assert_eq!(
                 expected,
                 SizedDefinition::F64(Endian::Big).to_string(
-                    &context,
+                    context,
                     SizedDisplay::Scientific(ScientificOptions {
                         uppercase: uppercase,
                     }),
@@ -1566,19 +1566,19 @@ mod tests {
     #[test]
     fn test_buffer_too_short() -> SimpleResult<()> {
         let data = b"".to_vec();
-        assert!(SizedDefinition::I8.to_string(&Context::new(&data), SizedDisplay::Decimal).is_err());
+        assert!(SizedDefinition::I8.to_string(Context::new(&data), SizedDisplay::Decimal).is_err());
 
         let data = b"A".to_vec();
-        assert!(SizedDefinition::I16(Endian::Big).to_string(&Context::new(&data), SizedDisplay::Decimal).is_err());
+        assert!(SizedDefinition::I16(Endian::Big).to_string(Context::new(&data), SizedDisplay::Decimal).is_err());
 
         let data = b"AAA".to_vec();
-        assert!(SizedDefinition::I32(Endian::Big).to_string(&Context::new(&data), SizedDisplay::Decimal).is_err());
+        assert!(SizedDefinition::I32(Endian::Big).to_string(Context::new(&data), SizedDisplay::Decimal).is_err());
 
         let data = b"AAAAAAA".to_vec();
-        assert!(SizedDefinition::I64(Endian::Big).to_string(&Context::new(&data), SizedDisplay::Decimal).is_err());
+        assert!(SizedDefinition::I64(Endian::Big).to_string(Context::new(&data), SizedDisplay::Decimal).is_err());
 
         let data = b"AAAAAAAAAAAAAAA".to_vec();
-        assert!(SizedDefinition::I128(Endian::Big).to_string(&Context::new(&data), SizedDisplay::Decimal).is_err());
+        assert!(SizedDefinition::I128(Endian::Big).to_string(Context::new(&data), SizedDisplay::Decimal).is_err());
 
         Ok(())
     }
@@ -1587,22 +1587,22 @@ mod tests {
     fn test_to_u64() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF\x00\x01\x02\x03".to_vec();
 
-        assert_eq!(0u64,   SizedDefinition::U8.to_u64(&Context::new_at(&data, 0))?);
-        assert_eq!(127u64, SizedDefinition::U8.to_u64(&Context::new_at(&data, 1))?);
-        assert_eq!(128u64, SizedDefinition::U8.to_u64(&Context::new_at(&data, 2))?);
-        assert_eq!(255u64, SizedDefinition::U8.to_u64(&Context::new_at(&data, 3))?);
+        assert_eq!(0u64,   SizedDefinition::U8.to_u64(Context::new_at(&data, 0))?);
+        assert_eq!(127u64, SizedDefinition::U8.to_u64(Context::new_at(&data, 1))?);
+        assert_eq!(128u64, SizedDefinition::U8.to_u64(Context::new_at(&data, 2))?);
+        assert_eq!(255u64, SizedDefinition::U8.to_u64(Context::new_at(&data, 3))?);
 
-        assert_eq!(127u64,               SizedDefinition::U16(Endian::Big).to_u64(&Context::new_at(&data, 0))?);
-        assert_eq!(8356095u64,           SizedDefinition::U32(Endian::Big).to_u64(&Context::new_at(&data, 0))?);
-        assert_eq!(35889154747335171u64, SizedDefinition::U64(Endian::Big).to_u64(&Context::new_at(&data, 0))?);
+        assert_eq!(127u64,               SizedDefinition::U16(Endian::Big).to_u64(Context::new_at(&data, 0))?);
+        assert_eq!(8356095u64,           SizedDefinition::U32(Endian::Big).to_u64(Context::new_at(&data, 0))?);
+        assert_eq!(35889154747335171u64, SizedDefinition::U64(Endian::Big).to_u64(Context::new_at(&data, 0))?);
 
-        assert!(SizedDefinition::U128(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::I8.to_u64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::I16(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::I32(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::I64(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::F32(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::F64(Endian::Big).to_u64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U128(Endian::Big).to_u64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I8.to_u64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I16(Endian::Big).to_u64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I32(Endian::Big).to_u64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I64(Endian::Big).to_u64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::F32(Endian::Big).to_u64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::F64(Endian::Big).to_u64(Context::new_at(&data, 0)).is_err());
 
         Ok(())
     }
@@ -1611,27 +1611,27 @@ mod tests {
     fn test_to_i64() -> SimpleResult<()> {
         let data = b"\x00\x7F\x80\xFF\x00\x01\x02\x03\x80\x00\x00\x00\x00\x00\x00\x00".to_vec();
 
-        assert_eq!(0i64,                    SizedDefinition::I8.to_i64(&Context::new_at(&data, 0))?);
-        assert_eq!(127i64,                  SizedDefinition::I8.to_i64(&Context::new_at(&data, 1))?);
-        assert_eq!(-128i64,                 SizedDefinition::I8.to_i64(&Context::new_at(&data, 2))?);
-        assert_eq!(-1i64,                   SizedDefinition::I8.to_i64(&Context::new_at(&data, 3))?);
+        assert_eq!(0i64,                    SizedDefinition::I8.to_i64(Context::new_at(&data, 0))?);
+        assert_eq!(127i64,                  SizedDefinition::I8.to_i64(Context::new_at(&data, 1))?);
+        assert_eq!(-128i64,                 SizedDefinition::I8.to_i64(Context::new_at(&data, 2))?);
+        assert_eq!(-1i64,                   SizedDefinition::I8.to_i64(Context::new_at(&data, 3))?);
 
-        assert_eq!(127i64,                  SizedDefinition::I16(Endian::Big).to_i64(&Context::new_at(&data, 0))?);
-        assert_eq!(-32768i64,               SizedDefinition::I16(Endian::Big).to_i64(&Context::new_at(&data, 8))?);
+        assert_eq!(127i64,                  SizedDefinition::I16(Endian::Big).to_i64(Context::new_at(&data, 0))?);
+        assert_eq!(-32768i64,               SizedDefinition::I16(Endian::Big).to_i64(Context::new_at(&data, 8))?);
 
-        assert_eq!(8356095i64,              SizedDefinition::I32(Endian::Big).to_i64(&Context::new_at(&data, 0))?);
-        assert_eq!(-2147483648i64,          SizedDefinition::I32(Endian::Big).to_i64(&Context::new_at(&data, 8))?);
+        assert_eq!(8356095i64,              SizedDefinition::I32(Endian::Big).to_i64(Context::new_at(&data, 0))?);
+        assert_eq!(-2147483648i64,          SizedDefinition::I32(Endian::Big).to_i64(Context::new_at(&data, 8))?);
 
-        assert_eq!(35889154747335171i64,    SizedDefinition::I64(Endian::Big).to_i64(&Context::new_at(&data, 0))?);
-        assert_eq!(-9223372036854775808i64, SizedDefinition::I64(Endian::Big).to_i64(&Context::new_at(&data, 8))?);
+        assert_eq!(35889154747335171i64,    SizedDefinition::I64(Endian::Big).to_i64(Context::new_at(&data, 0))?);
+        assert_eq!(-9223372036854775808i64, SizedDefinition::I64(Endian::Big).to_i64(Context::new_at(&data, 8))?);
 
-        assert!(SizedDefinition::I128(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::U8.to_i64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::U16(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::U32(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::U64(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::F32(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
-        assert!(SizedDefinition::F64(Endian::Big).to_i64(&Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::I128(Endian::Big).to_i64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U8.to_i64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U16(Endian::Big).to_i64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U32(Endian::Big).to_i64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::U64(Endian::Big).to_i64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::F32(Endian::Big).to_i64(Context::new_at(&data, 0)).is_err());
+        assert!(SizedDefinition::F64(Endian::Big).to_i64(Context::new_at(&data, 0)).is_err());
 
         Ok(())
     }

@@ -20,9 +20,11 @@ pub enum Endian {
 ///
 /// This is essentially a [`Cursor`], but with some convenience functions to
 /// clone and set the position more quickly.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Context<'a> {
-    c: Cursor<&'a Vec<u8>>,
+    v: &'a Vec<u8>,
+    position: u64,
+    //c: Cursor<&'a Vec<u8>>,
 }
 
 impl<'a> Context<'a> {
@@ -31,20 +33,24 @@ impl<'a> Context<'a> {
     /// Cannot fail, even if the Vec is empty.
     pub fn new(v: &'a Vec<u8>) -> Self {
         Self {
-            c: Cursor::new(v)
+            v: v,
+            position: 0,
+            //c: Cursor::new(v)
         }
     }
 
     /// Create a new [`Context`] at a given position.
     ///
-    /// Cannot fail, even if the Vec is empty or if the index is crazy. Those
+    /// Cannot fail, even if the Vec is empty or if the position is crazy. Those
     /// are checked when using the cursor, not while creating it.
-    pub fn new_at(v: &'a Vec<u8>, index: u64) -> Self {
-        let mut c = Cursor::new(v);
-        c.set_position(index);
+    pub fn new_at(v: &'a Vec<u8>, position: u64) -> Self {
+        //let mut c = Cursor::new(v);
+        //c.set_position(position);
 
         Self {
-            c: c
+            v: v,
+            position: position,
+            //c: c
         }
     }
 
@@ -53,34 +59,38 @@ impl<'a> Context<'a> {
     /// This is for internal use only. We clone a lot while reading values, but
     /// this operation is reasonably inexpensive since we don't actually clone
     /// the data - just a reference.
-    fn cursor(&self) -> Cursor<&Vec<u8>> {
-        self.c.clone()
+    fn cursor(self) -> Cursor<&'a Vec<u8>> {
+        let mut cursor = Cursor::new(self.v);
+        cursor.set_position(self.position);
+
+        cursor
     }
 
     /// Clone the [`Context`] and change the position at the same time.
     ///
     /// I found myself doing a clone-then-set-position operation a bunch, so
     /// this simplifies it.
-    pub fn at(&self, new_position: u64) -> Self {
-        let mut c = self.clone();
-        c.c.set_position(new_position);
+    pub fn at(self, new_position: u64) -> Self {
+        // TODO: Can we take advantage of copy trait here?
+        let mut c = self;
+        c.position = new_position;
 
         c
     }
 
     /// Get the current position.
-    pub fn position(&self) -> u64 {
-        self.c.position()
+    pub fn position(self) -> u64 {
+        self.position
     }
 
-    pub fn read_u8(&self) -> SimpleResult<u8> {
+    pub fn read_u8(self) -> SimpleResult<u8> {
         match self.cursor().read_u8() {
             Ok(i) => Ok(i),
             Err(e) => Err(SimpleError::from(e)),
         }
     }
 
-    pub fn read_u16(&self, endian: Endian) -> SimpleResult<u16> {
+    pub fn read_u16(self, endian: Endian) -> SimpleResult<u16> {
         match endian {
             Endian::Big => match self.cursor().read_u16::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -93,7 +103,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_u32(&self, endian: Endian) -> SimpleResult<u32> {
+    pub fn read_u32(self, endian: Endian) -> SimpleResult<u32> {
         match endian {
             Endian::Big => match self.cursor().read_u32::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -106,7 +116,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_u64(&self, endian: Endian) -> SimpleResult<u64> {
+    pub fn read_u64(self, endian: Endian) -> SimpleResult<u64> {
         match endian {
             Endian::Big => match self.cursor().read_u64::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -119,7 +129,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_u128(&self, endian: Endian) -> SimpleResult<u128> {
+    pub fn read_u128(self, endian: Endian) -> SimpleResult<u128> {
         match endian {
             Endian::Big => match self.cursor().read_u128::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -132,14 +142,14 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_i8(&self) -> SimpleResult<i8> {
+    pub fn read_i8(self) -> SimpleResult<i8> {
         match self.cursor().read_i8() {
             Ok(i) => Ok(i),
             Err(e) => Err(SimpleError::from(e)),
         }
     }
 
-    pub fn read_i16(&self, endian: Endian) -> SimpleResult<i16> {
+    pub fn read_i16(self, endian: Endian) -> SimpleResult<i16> {
         match endian {
             Endian::Big => match self.cursor().read_i16::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -152,7 +162,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_i32(&self, endian: Endian) -> SimpleResult<i32> {
+    pub fn read_i32(self, endian: Endian) -> SimpleResult<i32> {
         match endian {
             Endian::Big => match self.cursor().read_i32::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -165,7 +175,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_i64(&self, endian: Endian) -> SimpleResult<i64> {
+    pub fn read_i64(self, endian: Endian) -> SimpleResult<i64> {
         match endian {
             Endian::Big => match self.cursor().read_i64::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -178,7 +188,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_i128(&self, endian: Endian) -> SimpleResult<i128> {
+    pub fn read_i128(self, endian: Endian) -> SimpleResult<i128> {
         match endian {
             Endian::Big => match self.cursor().read_i128::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -191,7 +201,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_f32(&self, endian: Endian) -> SimpleResult<f32> {
+    pub fn read_f32(self, endian: Endian) -> SimpleResult<f32> {
         match endian {
             Endian::Big => match self.cursor().read_f32::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -204,7 +214,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_f64(&self, endian: Endian) -> SimpleResult<f64> {
+    pub fn read_f64(self, endian: Endian) -> SimpleResult<f64> {
         match endian {
             Endian::Big => match self.cursor().read_f64::<BigEndian>() {
                 Ok(i) => Ok(i),
@@ -217,7 +227,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn read_bytes(&self, size: usize) -> SimpleResult<Vec<u8>> {
+    pub fn read_bytes(self, size: usize) -> SimpleResult<Vec<u8>> {
         let mut v: Vec<u8> = Vec::with_capacity(size);
 
         match self.cursor().take(size as u64).read_to_end(&mut v) {
