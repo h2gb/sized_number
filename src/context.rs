@@ -241,6 +241,11 @@ impl<'a> Context<'a> {
             Err(e) => Err(SimpleError::from(e)),
         }
     }
+
+    /// Get a [`u8`] slice starting at the current `position`
+    pub fn as_slice(self) -> &'a [u8] {
+        &self.v[(self.position as usize)..]
+    }
 }
 
 #[cfg(test)]
@@ -270,6 +275,17 @@ mod tests {
         // Not valid
         assert!(Context::new(&data).read_bytes(5).is_err());
         assert!(Context::new_at(&data, 5).read_bytes(1).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_slice() -> SimpleResult<()> {
+        let data = b"ABCDEF".to_vec();
+
+        let c = Context::new_at(&data, 2);
+        let slice = c.as_slice();
+        assert_eq!(b"CDEF".to_vec(), slice);
 
         Ok(())
     }
