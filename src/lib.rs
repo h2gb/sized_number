@@ -60,6 +60,9 @@
 //! assert_eq!(0x0102030405060708, SizedDefinition::U64(Endian::Big).to_u64(context).unwrap());
 //! ```
 
+// Enable char::from_u32()
+#![feature(assoc_char_funcs)]
+
 use simple_error::{SimpleResult, bail};
 use std::fmt::{LowerHex, LowerExp, Octal, Binary, Display};
 use std::mem;
@@ -283,7 +286,6 @@ pub enum SizedDefinition {
 
     /// Signed 128-bit integer
     I128(Endian),
-
 
     /// Signed 32-bit (aka, single precision) floating point.
     ///

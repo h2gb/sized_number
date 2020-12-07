@@ -5,6 +5,12 @@ use std::io::{Cursor, Read};
 #[cfg(feature = "serialize")]
 use serde::{Serialize, Deserialize};
 
+/// The maximum size of a UTF8 character
+pub const MAX_UTF8_BYTES: usize = 4;
+
+/// The maximum number of 2-byte words in a UTF16 character
+pub const MAX_UTF16_WORDS: usize = 2;
+
 /// Define the endianness for reading multi-byte integers
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
@@ -242,6 +248,73 @@ impl<'a> Context<'a> {
         }
     }
 
+    /// Read a UTF-8 character, and return the size (in bytes) and character.
+    ///
+    /// A UTF-8 character is between 1 and [`MAX_UTF8_BYTES`] bytes long. The
+    /// size is automatically determined. If the character is invalid or the
+    /// read would go off the end of the buffer, an error is returned.
+    pub fn read_utf8(self) -> SimpleResult<(usize, char)> {
+        let mut c = self.cursor();
+
+        let mut v: Vec<u8> = Vec::new();
+        for i in 1..=MAX_UTF8_BYTES {
+            v.push(match c.read_u8() {
+                Ok(i) => i,
+                Err(e) => bail!("Couldn't read UTF-8: {}", e),
+            });
+
+            if let Ok(s) = std::str::from_utf8(&v) {
+                if let Some(c) = s.chars().next() {
+                    return Ok((i, c));
+                }
+            }
+        }
+
+        bail!("Couldn't find a valid UTF-8 character");
+    }
+
+    /// Read a UTF-16 character, and return the size (in bytes) and character.
+    ///
+    /// A UTF-16 character is between 1 and [`MAX_UTF16_WORDS`]. The size (in
+    /// bytes) is automatically determined (and returned).
+    pub fn read_utf16(self, endian: Endian) -> SimpleResult<(usize, char)> {
+        let mut c = self.cursor();
+        let mut v: Vec<u16> = Vec::new();
+        for i in 1..=MAX_UTF16_WORDS {
+            // Read 16 bits in the proper endian
+            v.push(match endian {
+                Endian::Big => match c.read_u16::<BigEndian>() {
+                    Ok(i) => i,
+                    Err(e) => bail!("Couldn't read UTF-16: {}", e),
+                },
+                Endian::Little => match c.read_u16::<LittleEndian>() {
+                    Ok(i) => i,
+                    Err(e) => bail!("Couldn't read UTF-16: {}", e),
+                },
+            });
+
+            // Attempt to convert to a string
+            if let Ok(s) = String::from_utf16(&v) {
+                if let Some(c) = s.chars().next() {
+                    return Ok((i*2, c));
+                }
+            }
+        }
+
+        bail!("Couldn't find a valid UTF-16 character");
+    }
+
+    /// Read a UTF-32 character, and return the size (in bytes) and character.
+    ///
+    /// A UTF-32 character is always 4 bytes (32-bits) long, so we don't return
+    /// the size.
+    pub fn read_utf32(self, endian: Endian) -> SimpleResult<char> {
+        match char::from_u32(self.read_u32(endian)?) {
+            Some(c) => Ok(c),
+            None    => bail!("Couldn't find a valid UTF-32 character"),
+        }
+    }
+
     /// Get a [`u8`] slice starting at the current `position`
     pub fn as_slice(self) -> &'a [u8] {
         &self.v[(self.position as usize)..]
@@ -286,6 +359,107 @@ mod tests {
         let c = Context::new_at(&data, 2);
         let slice = c.as_slice();
         assert_eq!(b"CDEF".to_vec(), slice);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_utf8() -> SimpleResult<()> {
+        //             --  --  ------  ----------  ----------  --------------  --------------
+        let data = b"\x41\x42\xc3\xb7\xE2\x9D\x84\xE2\x98\xA2\xF0\x9D\x84\x9E\xF0\x9F\x98\x88".to_vec();
+        let c = Context::new(&data);
+
+        assert_eq!((1, 'A'),  c.at(0).read_utf8()?);
+        assert_eq!((1, 'B'),  c.at(1).read_utf8()?);
+        assert_eq!((2, '÷'),  c.at(2).read_utf8()?);
+        assert_eq!((3, '❄'),  c.at(4).read_utf8()?);
+        assert_eq!((3, '☢'),  c.at(7).read_utf8()?);
+        assert_eq!((4, '𝄞'),  c.at(10).read_utf8()?);
+        assert_eq!((4, '😈'), c.at(14).read_utf8()?);
+
+        assert!(c.at(3).read_utf8().is_err());
+        assert!(c.at(5).read_utf8().is_err());
+        assert!(c.at(6).read_utf8().is_err());
+        assert!(c.at(8).read_utf8().is_err());
+        assert!(c.at(9).read_utf8().is_err());
+        assert!(c.at(3).read_utf8().is_err());
+        assert!(c.at(11).read_utf8().is_err());
+        assert!(c.at(12).read_utf8().is_err());
+        assert!(c.at(13).read_utf8().is_err());
+        assert!(c.at(15).read_utf8().is_err());
+        assert!(c.at(16).read_utf8().is_err());
+        assert!(c.at(17).read_utf8().is_err());
+        assert!(c.at(18).read_utf8().is_err());
+        assert!(c.at(19).read_utf8().is_err());
+        assert!(c.at(20).read_utf8().is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_utf16_big_endian() -> SimpleResult<()> {
+        //           ------------ single -----------  ----------- double ------------
+        let data = b"\x00\x41\x00\x42\x27\x44\x26\x22\xD8\x34\xDD\x1E\xD8\x3D\xDE\x08".to_vec();
+        let c = Context::new(&data);
+
+        // Single
+        assert_eq!((2, 'A'),  c.at(0).read_utf16(Endian::Big)?);
+        assert_eq!((2, 'B'),  c.at(2).read_utf16(Endian::Big)?);
+        assert_eq!((2, '❄'),  c.at(4).read_utf16(Endian::Big)?);
+        assert_eq!((2, '☢'),  c.at(6).read_utf16(Endian::Big)?);
+
+        // Double
+        assert_eq!((4, '𝄞'),  c.at(8).read_utf16(Endian::Big)?);
+        assert_eq!((4, '😈'), c.at(12).read_utf16(Endian::Big)?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_utf16_little_endian() -> SimpleResult<()> {
+        //           ------------ single -----------  ----------- double ------------
+        let data = b"\x41\x00\x42\x00\x44\x27\x22\x26\x34\xd8\x1e\xdd\x3d\xd8\x08\xde".to_vec();
+        let c = Context::new(&data);
+
+        // Single
+        assert_eq!((2, 'A'),  c.at(0).read_utf16(Endian::Little)?);
+        assert_eq!((2, 'B'),  c.at(2).read_utf16(Endian::Little)?);
+        assert_eq!((2, '❄'),  c.at(4).read_utf16(Endian::Little)?);
+        assert_eq!((2, '☢'),  c.at(6).read_utf16(Endian::Little)?);
+
+        // Double
+        assert_eq!((4, '𝄞'),  c.at(8).read_utf16(Endian::Little)?);
+        assert_eq!((4, '😈'), c.at(12).read_utf16(Endian::Little)?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_utf32_big_endian() -> SimpleResult<()> {
+        let data = b"\x00\x00\x00\x41\x00\x00\x00\x42\x00\x00\x27\x44\x00\x00\x26\x22\x00\x01\xD1\x1E\x00\x01\xF6\x08".to_vec();
+        let c = Context::new(&data);
+
+        assert_eq!('A',  c.at(0).read_utf32(Endian::Big)?);
+        assert_eq!('B',  c.at(4).read_utf32(Endian::Big)?);
+        assert_eq!('❄',  c.at(8).read_utf32(Endian::Big)?);
+        assert_eq!('☢',  c.at(12).read_utf32(Endian::Big)?);
+        assert_eq!('𝄞',  c.at(16).read_utf32(Endian::Big)?);
+        assert_eq!('😈', c.at(20).read_utf32(Endian::Big)?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_utf32_little_endian() -> SimpleResult<()> {
+        let data = b"\x41\x00\x00\x00\x42\x00\x00\x00\x44\x27\x00\x00\x22\x26\x00\x00\x1E\xd1\x01\x00\x08\xf6\x01\x00".to_vec();
+        let c = Context::new(&data);
+
+        assert_eq!('A',  c.at(0).read_utf32(Endian::Little)?);
+        assert_eq!('B',  c.at(4).read_utf32(Endian::Little)?);
+        assert_eq!('❄',  c.at(8).read_utf32(Endian::Little)?);
+        assert_eq!('☢',  c.at(12).read_utf32(Endian::Little)?);
+        assert_eq!('𝄞',  c.at(16).read_utf32(Endian::Little)?);
+        assert_eq!('😈', c.at(20).read_utf32(Endian::Little)?);
 
         Ok(())
     }
